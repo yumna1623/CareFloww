@@ -33,6 +33,7 @@ export const patientSignup = async (req, res) => {
           name,
           email,
           password: hashedPassword,
+          role: "patient",
         },
       });
 
@@ -92,6 +93,7 @@ export const doctorSignup = async (
           name,
           email,
           password: hashedPassword,
+          role: "doctor",
 
           specialization,
           availableStartTime,

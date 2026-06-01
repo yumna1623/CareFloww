@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { calculateSlot } from "../utils/timeHelpers.js";
 
 export const bookAppointment = async (req, res) => {
   try {
@@ -29,17 +30,39 @@ export const bookAppointment = async (req, res) => {
       },
     });
 
+    const queuePosition = count + 1;
+
+    const slotData = calculateSlot(
+      doctor.availableStartTime,
+      doctor.consultationDuration,
+      queuePosition,
+    );
+
     const appointment = await prisma.appointment.create({
       data: {
         patientId,
         doctorId,
-        queuePosition: count + 1,
+
+        queuePosition,
+
+        slotStartTime: slotData.slotStartTime,
+
+        slotEndTime: slotData.slotEndTime,
+
+        estimatedWait: slotData.estimatedWait,
       },
     });
 
     res.status(201).json({
       message: "Appointment booked",
-      appointment,
+
+      queuePosition: appointment.queuePosition,
+
+      slotStartTime: appointment.slotStartTime,
+
+      slotEndTime: appointment.slotEndTime,
+
+      estimatedWait: appointment.estimatedWait,
     });
   } catch (error) {
     res.status(500).json({
@@ -125,18 +148,58 @@ export const cancelAppointment = async (req, res) => {
     });
 
     for (let i = 0; i < remainingAppointments.length; i++) {
+      const newQueuePosition = i + 1;
+
+      const slotData = calculateSlot(
+        doctor.availableStartTime,
+        doctor.consultationDuration,
+        newQueuePosition,
+      );
+
       await prisma.appointment.update({
         where: {
           id: remainingAppointments[i].id,
         },
+
         data: {
-          queuePosition: i + 1,
+          queuePosition: newQueuePosition,
+
+          slotStartTime: slotData.slotStartTime,
+
+          slotEndTime: slotData.slotEndTime,
+
+          estimatedWait: slotData.estimatedWait,
         },
       });
     }
 
     res.json({
       message: "Appointment cancelled and queue updated",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const completeConsultation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await prisma.appointment.update({
+      where: {
+        id,
+      },
+
+      data: {
+        status: "done",
+      },
+    });
+
+    res.json({
+      message: "Consultation completed",
+      appointment,
     });
   } catch (error) {
     res.status(500).json({

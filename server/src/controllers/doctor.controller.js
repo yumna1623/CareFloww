@@ -7,6 +7,7 @@ export const getAllDoctors = async (req, res) => {
         id: true,
         name: true,
         email: true,
+        role: true,
         specialization: true,
         availableStartTime: true,
         availableEndTime: true,

@@ -23,6 +23,8 @@ model Doctor {
   name                  String
   email                 String   @unique
   password              String
+    role String @default("doctor")
+
   specialization        String
   availableStartTime    String
   availableEndTime      String
@@ -34,14 +36,18 @@ model Doctor {
 }
 
 model Appointment {
-  id            String   @id @default(uuid())
+  id            String @id @default(uuid())
 
   patientId     String
   doctorId      String
 
   queuePosition Int
 
-  status        String   @default("pending")
+  slotStartTime String?
+  slotEndTime   String?
+
+  estimatedWait Int?
+  status        String @default("pending")
 
   patient User   @relation(fields: [patientId], references: [id])
   doctor  Doctor @relation(fields: [doctorId], references: [id])

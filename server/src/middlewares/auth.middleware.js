@@ -1,14 +1,9 @@
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 
-const authMiddleware = async (
-  req,
-  res,
-  next
-) => {
+const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader =
-      req.headers.authorization;
+    const authHeader = req.headers.authorization;
 
     if (!authHeader) {
       return res.status(401).json({
@@ -16,13 +11,9 @@ const authMiddleware = async (
       });
     }
 
-    const token =
-      authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     let user = await prisma.user.findUnique({
       where: {
@@ -31,12 +22,11 @@ const authMiddleware = async (
     });
 
     if (!user) {
-      user =
-        await prisma.doctor.findUnique({
-          where: {
-            id: decoded.id,
-          },
-        });
+      user = await prisma.doctor.findUnique({
+        where: {
+          id: decoded.id,
+        },
+      });
     }
 
     if (!user) {
@@ -46,10 +36,9 @@ const authMiddleware = async (
     }
 
     req.user = user;
-    req.role = decoded.role;
+    req.role = user.role;
 
     next();
-
   } catch (error) {
     return res.status(401).json({
       message: "Unauthorized",
