@@ -183,6 +183,30 @@ export const cancelAppointment = async (req, res) => {
   }
 };
 
+export const startConsultation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await prisma.appointment.update({
+      where: {
+        id,
+      },
+
+      data: {
+        status: "in-progress",
+      },
+    });
+
+    res.json({
+      message: "Consultation started",
+      appointment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 export const completeConsultation = async (req, res) => {
   try {
     const { id } = req.params;

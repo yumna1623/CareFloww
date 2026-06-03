@@ -80,4 +80,27 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+export const markMissed = async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    const appointment = await prisma.appointment.update({
+      where: {
+        id,
+      },
+
+      data: {
+        status: "missed",
+      },
+    });
+
+    res.json({
+      message: "Patient marked missed",
+      appointment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
