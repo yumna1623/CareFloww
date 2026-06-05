@@ -1,18 +1,15 @@
 import prisma from "../config/prisma.js";
 import { calculateSlot } from "../utils/timeHelpers.js";
+import { generateSlots } from "../utils/generateSlots.js";
 
 export const bookAppointment = async (req, res) => {
   try {
-    const { doctorId } = req.body;
-
+    const { doctorId, slotStartTime } = req.body;
     const patientId = req.user.id;
 
-    // check doctor exists
-
+    // 1. Check doctor exists
     const doctor = await prisma.doctor.findUnique({
-      where: {
-        id: doctorId,
-      },
+      where: { id: doctorId },
     });
 
     if (!doctor) {
@@ -21,23 +18,44 @@ export const bookAppointment = async (req, res) => {
       });
     }
 
-    // count current queue
+    // 2. Generate all slots
+    const allSlots = generateSlots(
+      doctor.availableStartTime,
+      doctor.availableEndTime,
+      doctor.consultationDuration,
+    );
 
-    const count = await prisma.appointment.count({
+    // 3. Validate selected slot
+    const selectedSlot = allSlots.find((slot) => slot.start === slotStartTime);
+
+    if (!selectedSlot) {
+      return res.status(400).json({
+        message: "Invalid slot",
+      });
+    }
+
+    // 4. Check if slot already booked
+    const existingAppointment = await prisma.appointment.findFirst({
       where: {
         doctorId,
-        status: "pending",
+        slotStartTime,
+        status: {
+          not: "cancelled",
+        },
       },
     });
 
-    const queuePosition = count + 1;
+    if (existingAppointment) {
+      return res.status(400).json({
+        message: "Slot already booked",
+      });
+    }
 
-    const slotData = calculateSlot(
-      doctor.availableStartTime,
-      doctor.consultationDuration,
-      queuePosition,
-    );
+    // 5. Queue position based on slot order
+    const queuePosition =
+      allSlots.findIndex((slot) => slot.start === slotStartTime) + 1;
 
+    // 6. Create appointment
     const appointment = await prisma.appointment.create({
       data: {
         patientId,
@@ -45,24 +63,16 @@ export const bookAppointment = async (req, res) => {
 
         queuePosition,
 
-        slotStartTime: slotData.slotStartTime,
+        slotStartTime,
+        slotEndTime: selectedSlot.end,
 
-        slotEndTime: slotData.slotEndTime,
-
-        estimatedWait: slotData.estimatedWait,
+        estimatedWait: (queuePosition - 1) * doctor.consultationDuration,
       },
     });
 
     res.status(201).json({
       message: "Appointment booked",
-
-      queuePosition: appointment.queuePosition,
-
-      slotStartTime: appointment.slotStartTime,
-
-      slotEndTime: appointment.slotEndTime,
-
-      estimatedWait: appointment.estimatedWait,
+      appointment,
     });
   } catch (error) {
     res.status(500).json({
@@ -124,57 +134,19 @@ export const cancelAppointment = async (req, res) => {
     }
 
     // only owner can cancel
-
     if (appointment.patientId !== req.user.id) {
       return res.status(403).json({
         message: "Unauthorized",
       });
     }
 
+    // delete appointment
     await prisma.appointment.delete({
       where: { id },
     });
 
-    // recalculate queue
-
-    const remainingAppointments = await prisma.appointment.findMany({
-      where: {
-        doctorId: appointment.doctorId,
-        status: "pending",
-      },
-      orderBy: {
-        queuePosition: "asc",
-      },
-    });
-
-    for (let i = 0; i < remainingAppointments.length; i++) {
-      const newQueuePosition = i + 1;
-
-      const slotData = calculateSlot(
-        doctor.availableStartTime,
-        doctor.consultationDuration,
-        newQueuePosition,
-      );
-
-      await prisma.appointment.update({
-        where: {
-          id: remainingAppointments[i].id,
-        },
-
-        data: {
-          queuePosition: newQueuePosition,
-
-          slotStartTime: slotData.slotStartTime,
-
-          slotEndTime: slotData.slotEndTime,
-
-          estimatedWait: slotData.estimatedWait,
-        },
-      });
-    }
-
     res.json({
-      message: "Appointment cancelled and queue updated",
+      message: "Appointment cancelled successfully",
     });
   } catch (error) {
     res.status(500).json({
@@ -220,6 +192,11 @@ export const completeConsultation = async (req, res) => {
         status: "done",
       },
     });
+    if (appointment.status !== "in-progress") {
+      return res.status(400).json({
+        message: "Consultation not started",
+      });
+    }
 
     res.json({
       message: "Consultation completed",

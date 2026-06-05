@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { generateSlots } from "../utils/generateSlots.js";
 
 export const getAllDoctors = async (req, res) => {
   try {
@@ -97,6 +98,128 @@ export const markMissed = async (req, res) => {
     res.json({
       message: "Patient marked missed",
       appointment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getAvailableSlots = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const doctor = await prisma.doctor.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!doctor) {
+      return res.status(404).json({
+        message: "Doctor not found",
+      });
+    }
+
+    const allSlots = generateSlots(
+      doctor.availableStartTime,
+      doctor.availableEndTime,
+      doctor.consultationDuration,
+    );
+
+    const bookedAppointments = await prisma.appointment.findMany({
+      where: {
+        doctorId: id,
+
+        status: {
+          not: "cancelled",
+        },
+      },
+    });
+
+    const availableSlots = allSlots.map((slot) => {
+      const booked = bookedAppointments.some(
+        (app) => app.slotStartTime === slot.start,
+      );
+
+      return {
+        ...slot,
+        available: !booked,
+      };
+    });
+
+    res.json(availableSlots);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getDoctorDashboard = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+
+    // Current patient
+
+    const currentPatient = await prisma.appointment.findFirst({
+      where: {
+        doctorId,
+        status: "in-progress",
+      },
+
+      include: {
+        patient: true,
+      },
+    });
+
+    // Next patient
+
+    const nextPatient = await prisma.appointment.findFirst({
+      where: {
+        doctorId,
+        status: "pending",
+      },
+
+      include: {
+        patient: true,
+      },
+
+      orderBy: {
+        queuePosition: "asc",
+      },
+    });
+
+    // Counts
+
+    const pendingCount = await prisma.appointment.count({
+      where: {
+        doctorId,
+        status: "pending",
+      },
+    });
+
+    const completedCount = await prisma.appointment.count({
+      where: {
+        doctorId,
+        status: "done",
+      },
+    });
+
+    const missedCount = await prisma.appointment.count({
+      where: {
+        doctorId,
+        status: "missed",
+      },
+    });
+
+    res.json({
+      currentPatient,
+      nextPatient,
+      pendingCount,
+      completedCount,
+      missedCount,
     });
   } catch (error) {
     res.status(500).json({
