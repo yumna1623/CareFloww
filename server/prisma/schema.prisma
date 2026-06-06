@@ -41,11 +41,13 @@ model Appointment {
   patientId     String
   doctorId      String
 
-  queuePosition Int
+  appointmentDate DateTime
 
   slotStartTime String?
   slotEndTime   String?
 
+  queuePosition Int
+  
   estimatedWait Int?
   status        String @default("pending")
 

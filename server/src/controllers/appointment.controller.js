@@ -1,6 +1,7 @@
 import prisma from "../config/prisma.js";
 import { calculateSlot } from "../utils/timeHelpers.js";
 import { generateSlots } from "../utils/generateSlots.js";
+import { getIO } from "../socket.js";
 
 export const bookAppointment = async (req, res) => {
   try {
@@ -69,6 +70,17 @@ export const bookAppointment = async (req, res) => {
         estimatedWait: (queuePosition - 1) * doctor.consultationDuration,
       },
     });
+    getIO().emit(
+  "queueUpdated",
+  {
+    doctorId:
+      appointment.doctorId,
+  }
+);
+console.log(
+  "queueUpdated emitted",
+  appointment.doctorId
+);
 
     res.status(201).json({
       message: "Appointment booked",
@@ -144,6 +156,13 @@ export const cancelAppointment = async (req, res) => {
     await prisma.appointment.delete({
       where: { id },
     });
+    getIO().emit(
+  "queueUpdated",
+  {
+    doctorId:
+      appointment.doctorId,
+  }
+);
 
     res.json({
       message: "Appointment cancelled successfully",
@@ -168,6 +187,13 @@ export const startConsultation = async (req, res) => {
         status: "in-progress",
       },
     });
+    getIO().emit(
+  "queueUpdated",
+  {
+    doctorId:
+      appointment.doctorId,
+  }
+);
 
     res.json({
       message: "Consultation started",
@@ -192,6 +218,13 @@ export const completeConsultation = async (req, res) => {
         status: "done",
       },
     });
+    getIO().emit(
+  "queueUpdated",
+  {
+    doctorId:
+      appointment.doctorId,
+  }
+);
     if (appointment.status !== "in-progress") {
       return res.status(400).json({
         message: "Consultation not started",
