@@ -5,12 +5,16 @@ import { getIO } from "../socket.js";
 
 export const bookAppointment = async (req, res) => {
   try {
-    const { doctorId, slotStartTime } = req.body;
+    const { doctorId, slotStartTime, appointmentDate } = req.body;
+
     const patientId = req.user.id;
 
-    // 1. Check doctor exists
+    // Doctor exists
+
     const doctor = await prisma.doctor.findUnique({
-      where: { id: doctorId },
+      where: {
+        id: doctorId,
+      },
     });
 
     if (!doctor) {
@@ -19,14 +23,70 @@ export const bookAppointment = async (req, res) => {
       });
     }
 
-    // 2. Generate all slots
+    // DATE VALIDATION
+
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    const selectedDate = new Date(appointmentDate);
+
+    if (selectedDate < today) {
+      return res.status(400).json({
+        message: "Cannot book past dates",
+      });
+    }
+    const leave = await prisma.doctorLeave.findFirst({
+      where: {
+        doctorId,
+
+        leaveDate: selectedDate,
+      },
+    });
+
+    if (leave) {
+      return res.status(400).json({
+        message: "Doctor is unavailable on this date",
+      });
+    }
+    // 7 day limit
+
+    const maxDate = new Date();
+
+    maxDate.setDate(maxDate.getDate() + 7);
+
+    if (selectedDate > maxDate) {
+      return res.status(400).json({
+        message: "Can only book within 7 days",
+      });
+    }
+
+    // PAST TIME VALIDATION
+
+    const now = new Date();
+
+    if (selectedDate.toDateString() === now.toDateString()) {
+      const [hour, minute] = slotStartTime.split(":").map(Number);
+
+      const slotDate = new Date();
+
+      slotDate.setHours(hour, minute, 0, 0);
+
+      if (slotDate < now) {
+        return res.status(400).json({
+          message: "Cannot book past time slot",
+        });
+      }
+    }
+
+    // Generate slots
+
     const allSlots = generateSlots(
       doctor.availableStartTime,
       doctor.availableEndTime,
       doctor.consultationDuration,
     );
 
-    // 3. Validate selected slot
     const selectedSlot = allSlots.find((slot) => slot.start === slotStartTime);
 
     if (!selectedSlot) {
@@ -35,11 +95,16 @@ export const bookAppointment = async (req, res) => {
       });
     }
 
-    // 4. Check if slot already booked
+    // Check already booked
+
     const existingAppointment = await prisma.appointment.findFirst({
       where: {
         doctorId,
+
+        appointmentDate: selectedDate,
+
         slotStartTime,
+
         status: {
           not: "cancelled",
         },
@@ -52,38 +117,30 @@ export const bookAppointment = async (req, res) => {
       });
     }
 
-    // 5. Queue position based on slot order
     const queuePosition =
       allSlots.findIndex((slot) => slot.start === slotStartTime) + 1;
 
-    // 6. Create appointment
     const appointment = await prisma.appointment.create({
       data: {
         patientId,
+
         doctorId,
+
+        appointmentDate: selectedDate,
 
         queuePosition,
 
         slotStartTime,
+
         slotEndTime: selectedSlot.end,
 
         estimatedWait: (queuePosition - 1) * doctor.consultationDuration,
       },
     });
-    getIO().emit(
-  "queueUpdated",
-  {
-    doctorId:
-      appointment.doctorId,
-  }
-);
-console.log(
-  "queueUpdated emitted",
-  appointment.doctorId
-);
 
     res.status(201).json({
       message: "Appointment booked",
+
       appointment,
     });
   } catch (error) {
@@ -100,6 +157,9 @@ export const getMyAppointments = async (req, res) => {
     },
     include: {
       doctor: true,
+    },
+    orderBy: {
+      appointmentDate: "asc",
     },
   });
 
@@ -156,13 +216,9 @@ export const cancelAppointment = async (req, res) => {
     await prisma.appointment.delete({
       where: { id },
     });
-    getIO().emit(
-  "queueUpdated",
-  {
-    doctorId:
-      appointment.doctorId,
-  }
-);
+    getIO().emit("queueUpdated", {
+      doctorId: appointment.doctorId,
+    });
 
     res.json({
       message: "Appointment cancelled successfully",
@@ -187,13 +243,9 @@ export const startConsultation = async (req, res) => {
         status: "in-progress",
       },
     });
-    getIO().emit(
-  "queueUpdated",
-  {
-    doctorId:
-      appointment.doctorId,
-  }
-);
+    getIO().emit("queueUpdated", {
+      doctorId: appointment.doctorId,
+    });
 
     res.json({
       message: "Consultation started",
@@ -218,13 +270,9 @@ export const completeConsultation = async (req, res) => {
         status: "done",
       },
     });
-    getIO().emit(
-  "queueUpdated",
-  {
-    doctorId:
-      appointment.doctorId,
-  }
-);
+    getIO().emit("queueUpdated", {
+      doctorId: appointment.doctorId,
+    });
     if (appointment.status !== "in-progress") {
       return res.status(400).json({
         message: "Consultation not started",
@@ -234,6 +282,96 @@ export const completeConsultation = async (req, res) => {
     res.json({
       message: "Consultation completed",
       appointment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const rescheduleAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { appointmentDate, slotStartTime } = req.body;
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+
+      include: {
+        doctor: true,
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        message: "Appointment not found",
+      });
+    }
+
+    if (appointment.patientId !== req.user.id) {
+      return res.status(403).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const selectedDate = new Date(appointmentDate);
+
+    const existingAppointment = await prisma.appointment.findFirst({
+      where: {
+        doctorId: appointment.doctorId,
+
+        appointmentDate: selectedDate,
+
+        slotStartTime,
+
+        status: {
+          not: "cancelled",
+        },
+
+        NOT: {
+          id,
+        },
+      },
+    });
+
+    if (existingAppointment) {
+      return res.status(400).json({
+        message: "Slot already booked",
+      });
+    }
+
+    const allSlots = generateSlots(
+      appointment.doctor.availableStartTime,
+
+      appointment.doctor.availableEndTime,
+
+      appointment.doctor.consultationDuration,
+    );
+
+    const selectedSlot = allSlots.find((slot) => slot.start === slotStartTime);
+
+    if (!selectedSlot) {
+      return res.status(400).json({
+        message: "Invalid slot",
+      });
+    }
+
+    await prisma.appointment.update({
+      where: { id },
+
+      data: {
+        appointmentDate: selectedDate,
+
+        slotStartTime,
+
+        slotEndTime: selectedSlot.end,
+      },
+    });
+
+    res.json({
+      message: "Appointment rescheduled",
     });
   } catch (error) {
     res.status(500).json({

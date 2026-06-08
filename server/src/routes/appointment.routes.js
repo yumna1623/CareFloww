@@ -9,6 +9,7 @@ import {
   cancelAppointment,
   startConsultation,
   completeConsultation,
+  rescheduleAppointment,
 } from "../controllers/appointment.controller.js";
 
 import { markMissed } from "../controllers/doctor.controller.js";
@@ -24,5 +25,10 @@ router.delete("/:id", authMiddleware, patientOnly, cancelAppointment);
 router.patch("/start/:id", authMiddleware, doctorOnly, startConsultation);
 router.patch("/complete/:id", authMiddleware, doctorOnly, completeConsultation);
 router.patch("/missed/:id", authMiddleware, doctorOnly, markMissed);
-
+router.patch(
+  "/reschedule/:id",
+  authMiddleware,
+  patientOnly,
+  rescheduleAppointment,
+);
 export default router;

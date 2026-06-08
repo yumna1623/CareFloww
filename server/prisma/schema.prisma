@@ -30,6 +30,8 @@ model Doctor {
   availableEndTime      String
   consultationDuration  Int
   isVerified            Boolean  @default(false)
+  leaves                DoctorLeave[]
+
   appointments          Appointment[]
 
   createdAt             DateTime @default(now())
@@ -55,4 +57,12 @@ model Appointment {
   doctor  Doctor @relation(fields: [doctorId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+model DoctorLeave {
+  id        String   @id @default(uuid())
+  doctorId  String
+  leaveDate DateTime
+
+  doctor Doctor @relation(fields: [doctorId], references: [id])
 }

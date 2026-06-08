@@ -108,8 +108,7 @@ export const markMissed = async (req, res) => {
 
 export const getAvailableSlots = async (req, res) => {
   try {
-    const { id } = req.params;
-
+    const { id, date } = req.params;
     const doctor = await prisma.doctor.findUnique({
       where: {
         id,
@@ -220,6 +219,30 @@ export const getDoctorDashboard = async (req, res) => {
       pendingCount,
       completedCount,
       missedCount,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const addLeaveDate = async (req, res) => {
+  try {
+    const { leaveDate } = req.body;
+
+    const doctorId = req.user.id;
+
+    const leave = await prisma.doctorLeave.create({
+      data: {
+        doctorId,
+        leaveDate: new Date(leaveDate),
+      },
+    });
+
+    res.status(201).json({
+      message: "Leave date added",
+      leave,
     });
   } catch (error) {
     res.status(500).json({
