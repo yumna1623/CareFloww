@@ -53,6 +53,9 @@ model Appointment {
   estimatedWait Int?
   status        String @default("pending")
 
+  diagnosis    String?
+  prescription String?
+
   patient User   @relation(fields: [patientId], references: [id])
   doctor  Doctor @relation(fields: [doctorId], references: [id])
 

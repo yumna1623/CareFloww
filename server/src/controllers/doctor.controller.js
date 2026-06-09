@@ -160,65 +160,57 @@ export const getDoctorDashboard = async (req, res) => {
   try {
     const doctorId = req.user.id;
 
-    // Current patient
+    const today = new Date();
 
-    const currentPatient = await prisma.appointment.findFirst({
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayAppointments = await prisma.appointment.count({
       where: {
         doctorId,
-        status: "in-progress",
-      },
 
-      include: {
-        patient: true,
+        appointmentDate: {
+          gte: today,
+          lt: tomorrow,
+        },
       },
     });
 
-    // Next patient
-
-    const nextPatient = await prisma.appointment.findFirst({
+    const pendingAppointments = await prisma.appointment.count({
       where: {
         doctorId,
-        status: "pending",
-      },
 
-      include: {
-        patient: true,
-      },
-
-      orderBy: {
-        queuePosition: "asc",
-      },
-    });
-
-    // Counts
-
-    const pendingCount = await prisma.appointment.count({
-      where: {
-        doctorId,
         status: "pending",
       },
     });
 
-    const completedCount = await prisma.appointment.count({
+    const completedAppointments = await prisma.appointment.count({
       where: {
         doctorId,
+
         status: "done",
       },
     });
 
-    const missedCount = await prisma.appointment.count({
+    const missedAppointments = await prisma.appointment.count({
       where: {
         doctorId,
+
         status: "missed",
       },
     });
 
     res.json({
-      currentPatient,
-      nextPatient,
-      pendingCount,
-      completedCount,
-      missedCount,
+      todayAppointments,
+
+      pendingAppointments,
+
+      completedAppointments,
+
+      missedAppointments,
     });
   } catch (error) {
     res.status(500).json({

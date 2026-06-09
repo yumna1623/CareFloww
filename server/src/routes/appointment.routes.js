@@ -10,6 +10,8 @@ import {
   startConsultation,
   completeConsultation,
   rescheduleAppointment,
+  getPatientDashboard,
+  addPrescription
 } from "../controllers/appointment.controller.js";
 
 import { markMissed } from "../controllers/doctor.controller.js";
@@ -25,10 +27,8 @@ router.delete("/:id", authMiddleware, patientOnly, cancelAppointment);
 router.patch("/start/:id", authMiddleware, doctorOnly, startConsultation);
 router.patch("/complete/:id", authMiddleware, doctorOnly, completeConsultation);
 router.patch("/missed/:id", authMiddleware, doctorOnly, markMissed);
+router.patch("/reschedule/:id",authMiddleware,patientOnly,rescheduleAppointment,);
+router.get("/patient-dashboard",authMiddleware,patientOnly, getPatientDashboard );
 router.patch(
-  "/reschedule/:id",
-  authMiddleware,
-  patientOnly,
-  rescheduleAppointment,
-);
+  "/prescription/:id",authMiddleware,doctorOnly,addPrescription);
 export default router;

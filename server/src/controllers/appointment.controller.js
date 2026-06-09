@@ -379,3 +379,106 @@ export const rescheduleAppointment = async (req, res) => {
     });
   }
 };
+
+export const getPatientDashboard = async (req, res) => {
+  try {
+    const patientId = req.user.id;
+
+    const upcomingAppointments = await prisma.appointment.count({
+      where: {
+        patientId,
+
+        status: "pending",
+      },
+    });
+
+    const completedAppointments = await prisma.appointment.count({
+      where: {
+        patientId,
+
+        status: "done",
+      },
+    });
+
+    const missedAppointments = await prisma.appointment.count({
+      where: {
+        patientId,
+
+        status: "missed",
+      },
+    });
+
+    const cancelledAppointments = await prisma.appointment.count({
+      where: {
+        patientId,
+
+        status: "cancelled",
+      },
+    });
+
+    res.json({
+      upcomingAppointments,
+
+      completedAppointments,
+
+      missedAppointments,
+
+      cancelledAppointments,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+export const addPrescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { diagnosis, prescription } = req.body;
+
+    const appointment = await prisma.appointment.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        message: "Appointment not found",
+      });
+    }
+    if (appointment.status !== "done") {
+      return res.status(400).json({
+        message: "Consultation not completed yet",
+      });
+    }
+
+    if (appointment.doctorId !== req.user.id) {
+      return res.status(403).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const updatedAppointment = await prisma.appointment.update({
+      where: {
+        id,
+      },
+
+      data: {
+        diagnosis,
+        prescription,
+      },
+    });
+
+    res.json({
+      message: "Prescription added successfully",
+
+      appointment: updatedAppointment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
