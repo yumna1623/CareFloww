@@ -3,17 +3,32 @@ import { generateSlots } from "../utils/generateSlots.js";
 
 export const getAllDoctors = async (req, res) => {
   try {
+    const { name, specialization } = req.query;
+
     const doctors = await prisma.doctor.findMany({
+      where: {
+        ...(name && {
+          name: {
+            contains: name,
+            mode: "insensitive",
+          },
+        }),
+
+        ...(specialization && {
+          specialization: {
+            contains: specialization,
+            mode: "insensitive",
+          },
+        }),
+      },
+
       select: {
         id: true,
         name: true,
-        email: true,
-        role: true,
         specialization: true,
         availableStartTime: true,
         availableEndTime: true,
         consultationDuration: true,
-        createdAt: true,
       },
     });
 
