@@ -42,19 +42,26 @@ export const getAllDoctors = async (req, res) => {
 
 export const getDoctorById = async (req, res) => {
   try {
-    const { id } = req.params;
-
     const doctor = await prisma.doctor.findUnique({
       where: {
-        id,
+        id: req.params.id,
       },
-      select: {
-        id: true,
-        name: true,
-        specialization: true,
-        availableStartTime: true,
-        availableEndTime: true,
-        consultationDuration: true,
+
+      include: {
+        reviews: {
+          include: {
+            patient: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
     });
 
@@ -64,7 +71,23 @@ export const getDoctorById = async (req, res) => {
       });
     }
 
-    res.json(doctor);
+    const totalReviews = doctor.reviews.length;
+
+    const averageRating =
+      totalReviews > 0
+        ? (
+            doctor.reviews.reduce((sum, review) => sum + review.rating, 0) /
+            totalReviews
+          ).toFixed(1)
+        : 0;
+
+    res.json({
+      ...doctor,
+
+      averageRating: Number(averageRating),
+
+      totalReviews,
+    });
   } catch (error) {
     res.status(500).json({
       message: error.message,

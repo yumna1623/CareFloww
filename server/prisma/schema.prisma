@@ -12,9 +12,14 @@ model User {
   name         String
   email        String   @unique
   password     String
+
+  resetToken String?
+  resetTokenExpiry DateTime?
+
   role         String   @default("patient")
   isVerified   Boolean  @default(false)
   appointments Appointment[]
+  reviews      Review[]
   createdAt    DateTime @default(now())
 }
 
@@ -23,7 +28,11 @@ model Doctor {
   name                  String
   email                 String   @unique
   password              String
-    role String @default("doctor")
+
+  resetToken String?
+  resetTokenExpiry DateTime?
+
+  role String @default("doctor")
 
   specialization        String
   availableStartTime    String
@@ -33,6 +42,7 @@ model Doctor {
   leaves                DoctorLeave[]
 
   appointments          Appointment[]
+  reviews               Review[]
 
   createdAt             DateTime @default(now())
 }
@@ -68,4 +78,21 @@ model DoctorLeave {
   leaveDate DateTime
 
   doctor Doctor @relation(fields: [doctorId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+
+  rating    Int
+  comment   String?
+
+  patientId String
+  doctorId  String
+
+  patient   User   @relation(fields: [patientId], references: [id])
+  doctor    Doctor @relation(fields: [doctorId], references: [id])
+
+
+
+  createdAt DateTime @default(now())
 }

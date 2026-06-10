@@ -5,6 +5,8 @@ import {
   doctorSignup,
   login,
   getMe,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/auth.controller.js";
 import { patientOnly } from "../middlewares/role.middleware.js";
 import { getMyAppointments } from "../controllers/appointment.controller.js";
@@ -21,5 +23,9 @@ router.post("/login", login);
 
 router.get("/me", authMiddleware, getMe);
 router.get("/my", authMiddleware, patientOnly, getMyAppointments);
+
+router.post("/forgot-password", forgotPassword);
+
+router.post("/reset-password", resetPassword);
 
 export default router;

@@ -1,7 +1,7 @@
+import generateToken from "../utils/generateToken.js";
 import prisma from "../config/prisma.js";
 import bcrypt from "bcrypt";
-import generateToken from "../utils/generateToken.js";
-
+import crypto from "crypto";
 export const patientSignup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -151,4 +151,142 @@ export const getMe = async (req, res) => {
     user: req.user,
     role: req.role,
   });
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    let role = "patient";
+
+    if (!user) {
+      user = await prisma.doctor.findUnique({
+        where: { email },
+      });
+
+      role = "doctor";
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Email not found",
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    const expiry = new Date(Date.now() + 1000 * 60 * 15);
+
+    if (role === "patient") {
+      await prisma.user.update({
+        where: { id: user.id },
+
+        data: {
+          resetToken: token,
+          resetTokenExpiry: expiry,
+        },
+      });
+    } else {
+      await prisma.doctor.update({
+        where: { id: user.id },
+
+        data: {
+          resetToken: token,
+          resetTokenExpiry: expiry,
+        },
+      });
+    }
+
+    res.json({
+      message: "Reset token generated",
+
+      resetToken: token,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    let user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+
+        resetTokenExpiry: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    let role = "patient";
+
+    if (!user) {
+      user = await prisma.doctor.findFirst({
+        where: {
+          resetToken: token,
+
+          resetTokenExpiry: {
+            gt: new Date(),
+          },
+        },
+      });
+
+      role = "doctor";
+    }
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired token",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    if (role === "patient") {
+      await prisma.user.update({
+        where: {
+          id: user.id,
+        },
+
+        data: {
+          password: hashedPassword,
+
+          resetToken: null,
+
+          resetTokenExpiry: null,
+        },
+      });
+    } else {
+      await prisma.doctor.update({
+        where: {
+          id: user.id,
+        },
+
+        data: {
+          password: hashedPassword,
+
+          resetToken: null,
+
+          resetTokenExpiry: null,
+        },
+      });
+    }
+
+    res.json({
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };

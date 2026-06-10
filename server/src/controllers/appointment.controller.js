@@ -1,6 +1,7 @@
 import prisma from "../config/prisma.js";
 import { calculateSlot } from "../utils/timeHelpers.js";
 import { generateSlots } from "../utils/generateSlots.js";
+import { sendNotification } from "../utils/notify.js";
 import { getIO } from "../socket.js";
 
 export const bookAppointment = async (req, res) => {
@@ -137,6 +138,15 @@ export const bookAppointment = async (req, res) => {
         estimatedWait: (queuePosition - 1) * doctor.consultationDuration,
       },
     });
+    sendNotification(doctorId, "new_appointment", {
+      message: "New appointment booked",
+      appointment,
+    });
+
+    sendNotification(patientId, "appointment_confirmed", {
+      message: "Your appointment is confirmed",
+      appointment,
+    });
 
     res.status(201).json({
       message: "Appointment booked",
@@ -212,6 +222,10 @@ export const cancelAppointment = async (req, res) => {
       });
     }
 
+    sendNotification(appointment.doctorId, "appointment_cancelled", {
+      message: "Appointment cancelled",
+    });
+
     // delete appointment
     await prisma.appointment.delete({
       where: { id },
@@ -251,6 +265,9 @@ export const startConsultation = async (req, res) => {
       message: "Consultation started",
       appointment,
     });
+    sendNotification(appointment.patientId, "consultation_started", {
+      message: "Your consultation has started",
+    });
   } catch (error) {
     res.status(500).json({
       message: error.message,
@@ -278,6 +295,10 @@ export const completeConsultation = async (req, res) => {
         message: "Consultation not started",
       });
     }
+
+    sendNotification(appointment.patientId, "consultation_completed", {
+      message: "Consultation completed",
+    });
 
     res.json({
       message: "Consultation completed",
