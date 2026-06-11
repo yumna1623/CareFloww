@@ -171,22 +171,25 @@ export const forgotPassword = async (req, res) => {
       role = "doctor";
     }
 
+    // Generic response (security)
     if (!user) {
-      return res.status(404).json({
-        message: "Email not found",
+      return res.json({
+        message: "If the email exists, a reset link has been sent.",
       });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
 
-    const expiry = new Date(Date.now() + 1000 * 60 * 15);
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const expiry = new Date(Date.now() + 15 * 60 * 1000);
 
     if (role === "patient") {
       await prisma.user.update({
         where: { id: user.id },
 
         data: {
-          resetToken: token,
+          resetToken: hashedToken,
           resetTokenExpiry: expiry,
         },
       });
@@ -195,16 +198,16 @@ export const forgotPassword = async (req, res) => {
         where: { id: user.id },
 
         data: {
-          resetToken: token,
+          resetToken: hashedToken,
           resetTokenExpiry: expiry,
         },
       });
     }
 
-    res.json({
-      message: "Reset token generated",
+    // console.log("Reset Token:", token);
 
-      resetToken: token,
+    res.json({
+      message: "If the email exists, a reset link has been sent.",
     });
   } catch (error) {
     res.status(500).json({
@@ -217,9 +220,17 @@ export const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
     let user = await prisma.user.findFirst({
       where: {
-        resetToken: token,
+        resetToken: hashedToken,
 
         resetTokenExpiry: {
           gt: new Date(),
@@ -232,7 +243,7 @@ export const resetPassword = async (req, res) => {
     if (!user) {
       user = await prisma.doctor.findFirst({
         where: {
-          resetToken: token,
+          resetToken: hashedToken,
 
           resetTokenExpiry: {
             gt: new Date(),

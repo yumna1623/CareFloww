@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import cloudinary from "../config/cloudinary.js";
 import { generateSlots } from "../utils/generateSlots.js";
 
 export const getAllDoctors = async (req, res) => {
@@ -273,6 +274,43 @@ export const addLeaveDate = async (req, res) => {
     res.status(201).json({
       message: "Leave date added",
       leave,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const uploadProfileImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "File required",
+      });
+    }
+
+    const result = await cloudinary.uploader.upload(
+      `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+      {
+        folder: "careflow/doctors/profile",
+      },
+    );
+
+    const doctor = await prisma.doctor.update({
+      where: {
+        id: req.user.id,
+      },
+
+      data: {
+        profileImage: result.secure_url,
+      },
+    });
+
+    res.json({
+      message: "Profile uploaded",
+
+      image: doctor.profileImage,
     });
   } catch (error) {
     res.status(500).json({

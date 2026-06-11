@@ -16,6 +16,8 @@ model User {
   resetToken String?
   resetTokenExpiry DateTime?
 
+  profileImage String?
+  
   role         String   @default("patient")
   isVerified   Boolean  @default(false)
   appointments Appointment[]
@@ -31,6 +33,9 @@ model Doctor {
 
   resetToken String?
   resetTokenExpiry DateTime?
+
+  profileImage String?
+  licenseUrl String?
 
   role String @default("doctor")
 

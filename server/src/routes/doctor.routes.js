@@ -8,7 +8,9 @@ import {
   getAvailableSlots,
   getDoctorDashboard,
   addLeaveDate,
+  uploadProfileImage,
 } from "../controllers/doctor.controller.js";
+import upload from "../middlewares/upload.middleware.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import { doctorOnly } from "../middlewares/role.middleware.js";
 import { getDoctorQueue } from "../controllers/appointment.controller.js";
@@ -26,5 +28,7 @@ router.get("/:id/slots/:date", getAvailableSlots);
 router.get("/:id", getDoctorById);
 
 router.post("/leave", authMiddleware, doctorOnly, addLeaveDate);
+
+router.post("/profile/upload",authMiddleware,doctorOnly,upload.single("image"),uploadProfileImage,);
 
 export default router;
