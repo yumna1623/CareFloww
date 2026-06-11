@@ -1,15 +1,23 @@
 import generateToken from "../utils/generateToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
+import { signupSchema } from "../validators/auth.validator.js";
 import prisma from "../config/prisma.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+
 export const patientSignup = async (req, res) => {
   try {
+    const result = signupSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: result.error.errors[0].message,
+      });
+    }
     const { name, email, password } = req.body;
 
     const existingUser = await prisma.user.findUnique({
-      where: {
-        email,
-      },
+      where: { email },
     });
 
     if (existingUser) {
@@ -26,13 +34,34 @@ export const patientSignup = async (req, res) => {
         email,
         password: hashedPassword,
         role: "patient",
+        isVerified: false,
       },
     });
 
-    const token = generateToken(patient.id, patient.role);
+    // 🔐 email verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    await prisma.user.update({
+      where: { email },
+      data: {
+        verificationToken,
+      },
+    });
+
+    // 📧 send email (YOU IMPORTED sendEmail BUT NOT USED)
+    const verifyLink = `http://localhost:5000/api/auth/verify-email/${verificationToken}`;
+    await sendEmail(
+      email,
+      "Verify Your Email - CareFlow",
+      `<p>Click to verify:</p>
+       <a href="${verifyLink}">Verify Email</a>`,
+    );
+
+    // 🔑 JWT token (login session)
+    const jwtToken = generateToken(patient.id, patient.role);
 
     res.status(201).json({
-      token,
+      token: jwtToken,
       patient,
     });
   } catch (error) {
@@ -294,6 +323,54 @@ export const resetPassword = async (req, res) => {
 
     res.json({
       message: "Password reset successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const patient = await prisma.user.findFirst({
+      where: { verificationToken: token },
+    });
+
+    const doctor = await prisma.doctor.findFirst({
+      where: { verificationToken: token },
+    });
+
+    if (!patient && !doctor) {
+      return res.status(400).json({
+        message: "Invalid token",
+      });
+    }
+
+    if (patient) {
+      await prisma.user.update({
+        where: { id: patient.id },
+        data: {
+          isVerified: true,
+          verificationToken: null,
+        },
+      });
+    }
+
+    if (doctor) {
+      await prisma.doctor.update({
+        where: { id: doctor.id },
+        data: {
+          isVerified: true,
+          verificationToken: null,
+        },
+      });
+    }
+
+    res.json({
+      message: "Email verified successfully",
     });
   } catch (error) {
     res.status(500).json({

@@ -7,6 +7,7 @@ import {
   getMe,
   forgotPassword,
   resetPassword,
+  verifyEmail,
 } from "../controllers/auth.controller.js";
 import { patientOnly } from "../middlewares/role.middleware.js";
 import { getMyAppointments } from "../controllers/appointment.controller.js";
@@ -28,4 +29,7 @@ router.post("/forgot-password", forgotPassword);
 
 router.post("/reset-password", resetPassword);
 
+router.get("/verify-email/:token", (req, res) => {
+  res.send("Route is working");
+});
 export default router;

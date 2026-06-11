@@ -20,6 +20,8 @@ model User {
   
   role         String   @default("patient")
   isVerified   Boolean  @default(false)
+  verificationToken String?
+  
   appointments Appointment[]
   reviews      Review[]
   createdAt    DateTime @default(now())
@@ -36,6 +38,8 @@ model Doctor {
 
   profileImage String?
   licenseUrl String?
+
+  verificationToken String?
 
   role String @default("doctor")
 
