@@ -29,7 +29,5 @@ router.post("/forgot-password", forgotPassword);
 
 router.post("/reset-password", resetPassword);
 
-router.get("/verify-email/:token", (req, res) => {
-  res.send("Route is working");
-});
+router.get("/verify-email/:token", verifyEmail);
 export default router;

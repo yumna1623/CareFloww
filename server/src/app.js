@@ -3,16 +3,20 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.routes.js";
-import doctorRoutes from "./routes/doctor.routes.js";
-import appointmentRoutes from "./routes/appointment.routes.js";
 import reviewRoutes from "./routes/review.routes.js";
+import doctorRoutes from "./routes/doctor.routes.js";
+import { startReminderJob } from "./utils/reminderJob.js";
+import appointmentRoutes from "./routes/appointment.routes.js";
+
+
 
 const app = express();
 app.use(helmet()); //👉 Protects from:
-                      // XSS attacks
-                      // clickjacking
-                      // MIME sniffing
+// XSS attacks
+// clickjacking
+// MIME sniffing
 app.use(cors());
+startReminderJob();
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

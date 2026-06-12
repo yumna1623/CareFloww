@@ -1,15 +1,11 @@
 import transporter from "../config/mail.js";
 
-export const sendEmail = async (to, subject, html) => {
+export const sendEmail = async ({ to, subject, text, html }) => {
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
-
     to,
-
     subject,
-
+    text,
     html,
   });
-  console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
 };

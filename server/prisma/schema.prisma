@@ -64,6 +64,8 @@ model Appointment {
 
   appointmentDate DateTime
 
+  reminderSent Boolean @default(false)
+
   slotStartTime String?
   slotEndTime   String?
 
