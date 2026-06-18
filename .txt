@@ -1,0 +1,23 @@
+🔥Helmet adds security headers to your API responses.
+MIME sniffing
+Clickjacking
+Protects your app from:
+unsafe browser behaviors
+XSS attacks (script injection)
+
+🔥CORS
+Cross-origin attacks
+Unauthorized websites calling your API
+Controls which frontend can call your backend.
+
+
+🔥Limits how many requests a user can send.
+Protects from:
+
+API spam
+bot traffic overload
+Brute force login attacks
+One user cannot spam your server endlessly.
+
+🔥Reminder Email (CRON JOB)
+npm install node-cron
