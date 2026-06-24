@@ -1,20 +1,30 @@
+// src/App.jsx
+// ... other imports
+import BookAppointment from './pages/BookAppointment';
+import DoctorDashboard from './pages/DoctorDashboard';
+import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import PatientDashboard from './pages/PatientDashboard';
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="bg-white rounded-2xl shadow-xl p-10 w-[420px]">
-        <h1 className="text-3xl font-bold text-blue-600">
-          Hospital Management
-        </h1>
-
-        <p className="text-gray-500 mt-3">
-          Frontend setup completed successfully.
-        </p>
-
-        <button className="mt-8 w-full rounded-xl bg-blue-600 py-3 text-white font-semibold hover:bg-blue-700 transition">
-          Continue
-        </button>
-      </div>
-    </div>
+    <AuthProvider>
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/book-appointment" element={<BookAppointment />} />
+          <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+          <Route path="/patient/dashboard" element={<PatientDashboard />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
