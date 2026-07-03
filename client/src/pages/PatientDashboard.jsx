@@ -1,54 +1,130 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useEffect, useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
+import { AuthContext } from "../context/AuthContext";
 
 const PatientDashboard = () => {
   const { user, loading, logout } = useContext(AuthContext);
+
   const navigate = useNavigate();
+
+  const [appointments, setAppointments] = useState([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/login');
+      navigate("/login");
+      return;
     }
-  }, [user, loading, navigate]);
+
+    if (user) {
+      fetchAppointments();
+    }
+  }, [user, loading]);
+
+  const fetchAppointments = async () => {
+    try {
+      const { data } = await api.get(
+        "/appointments/patient-dashboard"
+      );
+
+      console.log(data);
+
+      // agar backend array return karta hai
+      setAppointments(data.appointments);
+    } catch (err) {
+      console.log(err.response?.data);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   if (loading) return <div className="pt-24 px-10">Loading...</div>;
 
   return (
     <div className="pt-24 px-10">
-      {/* Profile Section */}
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Welcome, {user?.name}</h1>
-        <p className="text-gray-500 text-lg">{user?.email}</p>
-        
-        <div className="mt-6 flex space-x-4">
-          <button 
-            onClick={() => navigate('/book-appointment')}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+
+      <div className="bg-white p-8 rounded-2xl shadow border mb-8">
+        <h1 className="text-3xl font-bold">
+          Welcome, {user?.name}
+        </h1>
+
+        <p className="text-gray-500">
+          {user?.email}
+        </p>
+
+        <div className="flex gap-4 mt-6">
+
+          <button
+            onClick={() => navigate("/book-appointment")}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg"
           >
             Book Appointment
           </button>
-          
-          <button 
+
+          <button
             onClick={handleLogout}
-            className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition font-medium"
+            className="bg-red-600 text-white px-6 py-2 rounded-lg"
           >
             Logout
           </button>
+
         </div>
       </div>
 
-      {/* Appointment History ya upcoming section yahan aayega */}
-      <div className="p-6 bg-blue-50 rounded-xl border border-blue-100">
-        <h2 className="text-xl font-semibold text-blue-900">Your Appointments</h2>
-        <p className="text-blue-700">You don't have any upcoming appointments yet.</p>
+      <div className="bg-white rounded-xl shadow border p-6">
+
+        <h2 className="text-2xl font-bold mb-6">
+          Upcoming Appointments
+        </h2>
+
+        {loadingAppointments ? (
+          <p>Loading...</p>
+        ) : appointments.length === 0 ? (
+          <p>You don't have any upcoming appointments yet.</p>
+        ) : (
+          appointments.map((appointment) => (
+            <div
+              key={appointment.id}
+              className="border rounded-lg p-4 mb-4"
+            >
+              <h3 className="font-bold text-lg">
+                Dr. {appointment.doctor.name}
+              </h3>
+
+              <p>
+                <strong>Specialization:</strong>{" "}
+                {appointment.doctor.specialization}
+              </p>
+
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(
+                  appointment.appointmentDate
+                ).toLocaleDateString()}
+              </p>
+
+              <p>
+                <strong>Time:</strong>{" "}
+                {appointment.slotStartTime} -{" "}
+                {appointment.slotEndTime}
+              </p>
+
+              <p>
+                <strong>Status:</strong>{" "}
+                {appointment.status}
+              </p>
+            </div>
+          ))
+        )}
+
       </div>
+
     </div>
   );
 };
