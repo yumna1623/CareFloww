@@ -418,7 +418,6 @@ export const getPatientDashboard = async (req, res) => {
     const upcomingAppointments = await prisma.appointment.count({
       where: {
         patientId,
-
         status: "pending",
       },
     });
@@ -426,7 +425,6 @@ export const getPatientDashboard = async (req, res) => {
     const completedAppointments = await prisma.appointment.count({
       where: {
         patientId,
-
         status: "done",
       },
     });
@@ -434,7 +432,6 @@ export const getPatientDashboard = async (req, res) => {
     const missedAppointments = await prisma.appointment.count({
       where: {
         patientId,
-
         status: "missed",
       },
     });
@@ -442,19 +439,35 @@ export const getPatientDashboard = async (req, res) => {
     const cancelledAppointments = await prisma.appointment.count({
       where: {
         patientId,
-
         status: "cancelled",
+      },
+    });
+
+    // 👇 Fetch appointment details
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        patientId,
+      },
+      include: {
+        doctor: {
+          select: {
+            name: true,
+            specialization: true,
+            profileImage: true,
+          },
+        },
+      },
+      orderBy: {
+        appointmentDate: "asc",
       },
     });
 
     res.json({
       upcomingAppointments,
-
       completedAppointments,
-
       missedAppointments,
-
       cancelledAppointments,
+      appointments,
     });
   } catch (error) {
     res.status(500).json({
