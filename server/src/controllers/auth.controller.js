@@ -10,8 +10,14 @@ export const patientSignup = async (req, res) => {
     const result = signupSchema.safeParse(req.body);
 
     if (!result.success) {
+      // Pehle check karein ki errors array mein data hai
+      const errorMessage =
+        result.error.errors && result.error.errors.length > 0
+          ? result.error.errors[0].message
+          : "Invalid input data";
+
       return res.status(400).json({
-        message: result.error.errors[0].message,
+        message: errorMessage,
       });
     }
     const { name, email, password } = req.body;
@@ -50,12 +56,13 @@ export const patientSignup = async (req, res) => {
 
     // 📧 send email (YOU IMPORTED sendEmail BUT NOT USED)
     const verifyLink = `http://localhost:5000/api/auth/verify-email/${verificationToken}`;
-    await sendEmail(
-      email,
-      "Verify Your Email - CareFlow",
-      `<p>Click to verify:</p>
-       <a href="${verifyLink}">Verify Email</a>`,
-    );
+   console.log("Sending email to:", email); // Check karein console mein kya print ho raha hai
+await sendEmail(
+  email,
+  "Verify Your Email - CareFlow",
+  `<p>Click to verify:</p>
+   <a href="${verifyLink}">Verify Email</a>`
+);
 
     // 🔑 JWT token (login session)
     const jwtToken = generateToken(patient.id, patient.role);
@@ -77,6 +84,7 @@ export const doctorSignup = async (req, res) => {
       name,
       email,
       password,
+      doctorSecret,
 
       specialization,
       availableStartTime,
@@ -84,6 +92,9 @@ export const doctorSignup = async (req, res) => {
       consultationDuration,
     } = req.body;
 
+    if (doctorSecret !== process.env.DOCTOR_REGISTRATION_SECRET) {
+      return res.status(403).json({ message: "Invalid Secret Key" });
+    }
     const existingDoctor = await prisma.doctor.findUnique({
       where: {
         email,

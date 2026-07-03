@@ -40,21 +40,21 @@ export const bookAppointment = async (req, res) => {
     }
 
     // 5. Doctor leave check (better match)
-   const leaves = await prisma.doctorLeave.findMany({
-  where: { doctorId },
-});
+    const leaves = await prisma.doctorLeave.findMany({
+      where: { doctorId },
+    });
 
-const isOnLeave = leaves.some(
-  (leave) =>
-    new Date(leave.leaveDate).toDateString() ===
-    selectedDate.toDateString()
-);
+    const isOnLeave = leaves.some(
+      (leave) =>
+        new Date(leave.leaveDate).toDateString() ===
+        selectedDate.toDateString(),
+    );
 
-if (isOnLeave) {
-  return res.status(400).json({
-    message: "Doctor is unavailable on this date",
-  });
-}
+    if (isOnLeave) {
+      return res.status(400).json({
+        message: "Doctor is unavailable on this date",
+      });
+    }
 
     // 6. Generate slots
     const allSlots = generateSlots(
@@ -107,10 +107,10 @@ if (isOnLeave) {
       where: { id: patientId },
     });
     if (!patient) {
-  return res.status(404).json({
-    message: "Patient not found",
-  });
-}
+      return res.status(404).json({
+        message: "Patient not found",
+      });
+    }
 
     if (!patient?.email) {
       return res.status(400).json({
@@ -131,19 +131,15 @@ if (isOnLeave) {
       },
     });
 
-  
-
     await sendEmail({
       to: patient.email,
       subject: "Appointment Confirmed",
-text: `
+      text: `
 Your appointment has been confirmed.
 
 Doctor: Dr. ${doctor.name}
 Appointment ID: ${appointment.id}
-Date: ${new Date(
-  appointment.appointmentDate
-).toDateString()}
+Date: ${new Date(appointment.appointmentDate).toDateString()}
 Time: ${appointment.slotStartTime} - ${appointment.slotEndTime}
 
 Please arrive 10 minutes early.
@@ -162,9 +158,6 @@ Thank you.
       message: "Your appointment is confirmed",
       appointment,
     });
-
-    // 13. (OPTIONAL) Email confirmation hook
-    // await sendEmail({ to: patient.email, subject: "Appointment Confirmed", ... })
 
     return res.status(201).json({
       message: "Appointment booked successfully",
