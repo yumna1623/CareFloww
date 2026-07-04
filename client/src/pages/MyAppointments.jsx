@@ -38,6 +38,31 @@ const MyAppointments = () => {
         return "bg-blue-100 text-blue-700";
     }
   };
+  const handleCancelAppointment = async (appointmentId) => {
+  const confirmCancel = window.confirm(
+    "Are you sure you want to cancel this appointment?"
+  );
+
+  if (!confirmCancel) return;
+
+  try {
+    const { data } = await api.patch(
+      `/appointments/${appointmentId}/cancel`
+    );
+
+    alert(data.message);
+
+    // Refresh appointment list
+    fetchAppointments();
+  } catch (err) {
+    console.log(err.response?.data);
+
+    alert(
+      err.response?.data?.message ||
+        "Unable to cancel appointment."
+    );
+  }
+};
 
   return (
     <div className="pt-24 px-10">
@@ -102,7 +127,16 @@ const MyAppointments = () => {
                 <strong>Estimated Wait:</strong>{" "}
                 {appointment.estimatedWait ?? "--"} min
               </p>
-
+<div className="mt-5">
+  {appointment.status === "pending" && (
+    <button
+      onClick={() => handleCancelAppointment(appointment.id)}
+      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+    >
+      Cancel Appointment
+    </button>
+  )}
+</div>
             </div>
           </div>
         ))
