@@ -3,36 +3,76 @@ import prisma from "../config/prisma.js";
 import { sendEmail } from "../utils/sendEmail.js";
 
 export const startReminderJob = () => {
+  // Runs every minute
   cron.schedule("* * * * *", async () => {
     try {
-      console.log("Checking reminders...");
+      console.log("Checking reminders & missed appointments...");
 
       const now = new Date();
+
+      // ===================================================
+      // PART 1: Automatically mark expired appointments
+      // ===================================================
+
+      const pendingAppointments = await prisma.appointment.findMany({
+        where: {
+          status: "pending",
+        },
+      });
+
+      for (const appointment of pendingAppointments) {
+        const appointmentDateTime = new Date(appointment.appointmentDate);
+
+        const [hour, minute] = appointment.slotStartTime
+          .split(":")
+          .map(Number);
+
+        appointmentDateTime.setHours(hour, minute, 0, 0);
+
+        // Appointment time has passed
+        if (appointmentDateTime < now) {
+          await prisma.appointment.update({
+            where: {
+              id: appointment.id,
+            },
+            data: {
+              status: "missed",
+            },
+          });
+
+          console.log(`Appointment ${appointment.id} marked as MISSED`);
+        }
+      }
+
+      // ===================================================
+      // PART 2: Send Reminder Emails
+      // ===================================================
 
       const appointments = await prisma.appointment.findMany({
         where: {
           reminderSent: false,
           status: "pending",
         },
+
         include: {
           patient: true,
           doctor: true,
         },
       });
 
-      for (let appt of appointments) {
+      for (const appt of appointments) {
         const appointmentTime = new Date(appt.appointmentDate);
 
-        const [hour, minute] = appt.slotStartTime.split(":");
+        const [hour, minute] = appt.slotStartTime
+          .split(":")
+          .map(Number);
+
         appointmentTime.setHours(hour, minute, 0, 0);
 
         const diff = appointmentTime - now;
 
-        // 1 hour = 3600000 ms
-        if (diff > 0 && diff <= 3600000) {
-          // ❗ PREVENT DUPLICATE EMAILS (VERY IMPORTANT)
-          if (appt.reminderSent) continue;
-
+        // Send reminder only within 1 hour before appointment
+        if (diff > 0 && diff <= 60 * 60 * 1000) {
           await sendEmail({
             to: appt.patient.email,
             subject: "Appointment Reminder (1 Hour Left)",
@@ -50,17 +90,20 @@ Your appointment begins in less than 1 hour.
             `,
           });
 
-          // mark as sent
           await prisma.appointment.update({
-            where: { id: appt.id },
-            data: { reminderSent: true },
+            where: {
+              id: appt.id,
+            },
+            data: {
+              reminderSent: true,
+            },
           });
 
-          console.log("Reminder sent:", appt.id);
+          console.log(`Reminder sent: ${appt.id}`);
         }
       }
     } catch (error) {
-      console.log("Reminder job error:", error.message);
+      console.log("Reminder Job Error:", error.message);
     }
   });
 };
