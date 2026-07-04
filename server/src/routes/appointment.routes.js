@@ -11,7 +11,8 @@ import {
   completeConsultation,
   rescheduleAppointment,
   getPatientDashboard,
-  addPrescription
+  addPrescription,
+  getPatientAppointments,
 } from "../controllers/appointment.controller.js";
 
 import { markMissed } from "../controllers/doctor.controller.js";
@@ -31,4 +32,10 @@ router.patch("/reschedule/:id",authMiddleware,patientOnly,rescheduleAppointment,
 router.get("/patient-dashboard",authMiddleware,patientOnly, getPatientDashboard );
 router.patch(
   "/prescription/:id",authMiddleware,doctorOnly,addPrescription);
+  router.get(
+  "/my-appointments",
+  authMiddleware,
+  getPatientAppointments
+);
+router.patch("/:appointmentId/cancel", authMiddleware, cancelAppointment);
 export default router;

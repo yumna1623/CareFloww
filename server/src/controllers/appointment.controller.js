@@ -186,6 +186,37 @@ export const getMyAppointments = async (req, res) => {
   res.json(appointments);
 };
 
+export const getPatientAppointments = async (req, res) => {
+  try {
+    const patientId = req.user.id;
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        patientId,
+      },
+      include: {
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            specialization: true,
+            profileImage: true,
+          },
+        },
+      },
+      orderBy: {
+        appointmentDate: "desc",
+      },
+    });
+
+    res.json(appointments);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getDoctorQueue = async (req, res) => {
   try {
     const queue = await prisma.appointment.findMany({
@@ -213,10 +244,12 @@ export const getDoctorQueue = async (req, res) => {
 
 export const cancelAppointment = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { appointmentId } = req.params;
 
     const appointment = await prisma.appointment.findUnique({
-      where: { id },
+      where: {
+        id: appointmentId,
+      },
     });
 
     if (!appointment) {
@@ -225,7 +258,6 @@ export const cancelAppointment = async (req, res) => {
       });
     }
 
-    // only owner can cancel
     if (appointment.patientId !== req.user.id) {
       return res.status(403).json({
         message: "Unauthorized",
@@ -236,10 +268,12 @@ export const cancelAppointment = async (req, res) => {
       message: "Appointment cancelled",
     });
 
-    // delete appointment
     await prisma.appointment.delete({
-      where: { id },
+      where: {
+        id: appointmentId,
+      },
     });
+
     getIO().emit("queueUpdated", {
       doctorId: appointment.doctorId,
     });
