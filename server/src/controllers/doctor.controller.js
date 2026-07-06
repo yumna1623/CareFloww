@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import cloudinary from "../config/cloudinary.js";
+import { updateQueue } from "../utils/updateQueue.js";
 import { generateSlots } from "../utils/generateSlots.js";
 
 export const getAllDoctors = async (req, res) => {
@@ -124,19 +125,44 @@ export const markMissed = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const appointment = await prisma.appointment.update({
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        message: "Appointment not found",
+      });
+    }
+
+    const appointmentTime = new Date(appointment.appointmentDate);
+
+    const [hour, minute] = appointment.slotStartTime.split(":").map(Number);
+
+    appointmentTime.setHours(hour, minute, 0, 0);
+
+    if (new Date() < appointmentTime) {
+      return res.status(400).json({
+        message: "Cannot mark patient missed before appointment time.",
+      });
+    }
+
+    const updated = await prisma.appointment.update({
       where: {
         id,
       },
-
       data: {
         status: "missed",
       },
     });
+    await updateQueue(appointment.doctorId, appointment.appointmentDate);
+    getIO().emit("queueUpdated", {
+      doctorId: appointment.doctorId,
+    });
 
     res.json({
-      message: "Patient marked missed",
-      appointment,
+      message: "Patient marked as missed",
+      appointment: updated,
     });
   } catch (error) {
     res.status(500).json({

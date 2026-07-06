@@ -4,6 +4,7 @@ import { generateSlots } from "../utils/generateSlots.js";
 import { sendNotification } from "../utils/notify.js";
 import { getIO } from "../socket.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { updateQueue } from "../utils/updateQueue.js";
 
 export const bookAppointment = async (req, res) => {
   try {
@@ -100,8 +101,17 @@ export const bookAppointment = async (req, res) => {
     }
 
     // 9. Queue position
-    const queuePosition =
-      allSlots.findIndex((slot) => slot.start === slotStartTime) + 1;
+    const previousAppointments = await prisma.appointment.count({
+      where: {
+        doctorId,
+        appointmentDate: selectedDate,
+        status: {
+          not: "cancelled",
+        },
+      },
+    });
+
+    const queuePosition = previousAppointments + 1;
     // 11. Get patient for email/notification
     const patient = await prisma.user.findUnique({
       where: { id: patientId },
@@ -165,6 +175,101 @@ Thank you.
     });
   } catch (error) {
     return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+export const trackAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await prisma.appointment.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        doctor: true,
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        message: "Appointment not found",
+      });
+    }
+
+    if (appointment.patientId !== req.user.id) {
+      return res.status(403).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const doctor = appointment.doctor;
+
+    // Appointment date + slot time
+    const appointmentTime = new Date(appointment.appointmentDate);
+
+    const [hour, minute] = appointment.slotStartTime
+      .split(":")
+      .map(Number);
+
+    appointmentTime.setHours(hour, minute, 0, 0);
+
+    const now = new Date();
+
+    let currentQueue = 0;
+    let peopleAhead = 0;
+    let estimatedWait = 0;
+    let countdown = null;
+
+    // Future appointment
+    if (now < appointmentTime) {
+      const diff = appointmentTime.getTime() - now.getTime();
+
+      const totalMinutes = Math.floor(diff / 60000);
+
+      const days = Math.floor(totalMinutes / (60 * 24));
+      const hours = Math.floor(
+        (totalMinutes % (60 * 24)) / 60
+      );
+      const minutes = totalMinutes % 60;
+
+      countdown = {
+        days,
+        hours,
+        minutes,
+      };
+    } else {
+      // Doctor has started consulting
+
+      currentQueue = await prisma.appointment.count({
+        where: {
+          doctorId: appointment.doctorId,
+          appointmentDate: appointment.appointmentDate,
+          status: {
+            in: ["done", "in-progress"],
+          },
+        },
+      });
+
+      peopleAhead = Math.max(
+        appointment.queuePosition - currentQueue - 1,
+        0
+      );
+
+      estimatedWait =
+        peopleAhead * doctor.consultationDuration;
+    }
+
+    res.json({
+      appointment,
+      currentQueue,
+      peopleAhead,
+      estimatedWait,
+      countdown,
+    });
+  } catch (error) {
+    res.status(500).json({
       message: error.message,
     });
   }
@@ -274,6 +379,8 @@ export const cancelAppointment = async (req, res) => {
       },
     });
 
+    await updateQueue(appointment.doctorId, appointment.appointmentDate);
+
     getIO().emit("queueUpdated", {
       doctorId: appointment.doctorId,
     });
@@ -289,6 +396,17 @@ export const cancelAppointment = async (req, res) => {
 };
 
 export const startConsultation = async (req, res) => {
+  const appointmentStart = new Date(appointment.appointmentDate);
+
+  const [hour, minute] = appointment.slotStartTime.split(":").map(Number);
+
+  appointmentStart.setHours(hour, minute, 0, 0);
+
+  if (new Date() < appointmentStart) {
+    return res.status(400).json({
+      message: "Consultation cannot start before the appointment time.",
+    });
+  }
   try {
     const { id } = req.params;
 
@@ -331,6 +449,7 @@ export const completeConsultation = async (req, res) => {
         status: "done",
       },
     });
+    await updateQueue(appointment.doctorId, appointment.appointmentDate);
     getIO().emit("queueUpdated", {
       doctorId: appointment.doctorId,
     });
