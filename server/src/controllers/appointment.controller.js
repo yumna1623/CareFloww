@@ -323,28 +323,78 @@ export const getPatientAppointments = async (req, res) => {
 };
 
 export const getDoctorQueue = async (req, res) => {
-  try {
-    const queue = await prisma.appointment.findMany({
-      where: {
-        doctorId: req.user.id,
-        status: "pending",
-      },
+    try {
 
-      include: {
-        patient: true,
-      },
+        const doctorId = req.user.id;
 
-      orderBy: {
-        queuePosition: "asc",
-      },
-    });
+        const date = req.query.date;
 
-    res.json(queue);
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
+        let startDate;
+        let endDate;
+
+        if (date) {
+
+            startDate = new Date(date);
+            startDate.setHours(0,0,0,0);
+
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate()+1);
+
+        } else {
+
+            startDate = new Date();
+            startDate.setHours(0,0,0,0);
+
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate()+1);
+
+        }
+
+        const appointments = await prisma.appointment.findMany({
+
+            where:{
+                doctorId,
+
+                appointmentDate:{
+                    gte:startDate,
+                    lt:endDate
+                },
+
+                status:{
+                    in:["pending","in-progress"]
+                }
+            },
+
+            include:{
+                patient:{
+                    select:{
+                        id:true,
+                        name:true,
+                        email:true
+                    }
+                }
+            },
+
+            orderBy:[
+                {
+                    appointmentDate:"asc"
+                },
+                {
+                    slotStartTime:"asc"
+                }
+            ]
+
+        });
+
+        res.json(appointments);
+
+    } catch(error){
+
+        res.status(500).json({
+            message:error.message
+        });
+
+    }
 };
 
 export const cancelAppointment = async (req, res) => {

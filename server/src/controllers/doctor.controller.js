@@ -192,15 +192,15 @@ export const getAvailableSlots = async (req, res) => {
       doctor.consultationDuration,
     );
 
-    const bookedAppointments = await prisma.appointment.findMany({
-      where: {
-        doctorId: id,
-
-        status: {
-          not: "cancelled",
-        },
-      },
-    });
+   const bookedAppointments = await prisma.appointment.findMany({
+  where: {
+    doctorId: id,
+    appointmentDate: new Date(date),
+    status: {
+      not: "cancelled",
+    },
+  },
+});
 
     const availableSlots = allSlots.map((slot) => {
       const booked = bookedAppointments.some(
@@ -226,17 +226,14 @@ export const getDoctorDashboard = async (req, res) => {
     const doctorId = req.user.id;
 
     const today = new Date();
-
     today.setHours(0, 0, 0, 0);
 
     const tomorrow = new Date(today);
-
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setDate(today.getDate() + 1);
 
     const todayAppointments = await prisma.appointment.count({
       where: {
         doctorId,
-
         appointmentDate: {
           gte: today,
           lt: tomorrow,
@@ -247,34 +244,40 @@ export const getDoctorDashboard = async (req, res) => {
     const pendingAppointments = await prisma.appointment.count({
       where: {
         doctorId,
-
         status: "pending",
+        appointmentDate: {
+          gte: today,
+          lt: tomorrow,
+        },
       },
     });
 
     const completedAppointments = await prisma.appointment.count({
       where: {
         doctorId,
-
         status: "done",
+        appointmentDate: {
+          gte: today,
+          lt: tomorrow,
+        },
       },
     });
 
     const missedAppointments = await prisma.appointment.count({
       where: {
         doctorId,
-
         status: "missed",
+        appointmentDate: {
+          gte: today,
+          lt: tomorrow,
+        },
       },
     });
 
     res.json({
       todayAppointments,
-
       pendingAppointments,
-
       completedAppointments,
-
       missedAppointments,
     });
   } catch (error) {
