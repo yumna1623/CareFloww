@@ -88,14 +88,15 @@ const BookAppointment = () => {
   e.preventDefault();
 
   try {
-    await api.post("/appointments/book", {
-      doctorId: formData.doctorId,
-      appointmentDate: formData.appointmentDate,
-      slotStartTime: formData.slot,
-    });
+    const { data } = await api.post("/appointments/book", {
+  doctorId: formData.doctorId,
+  appointmentDate: formData.appointmentDate,
+  slotStartTime: formData.slot,
+});
 
-    alert("Appointment booked successfully!");
-    navigate("/patient/dashboard");
+alert("Appointment booked successfully!");
+
+navigate(`/track/${data.appointment.id}`);
   } catch (err) {
     console.log(err.response?.data);
     alert(err.response?.data?.message || "Booking failed");

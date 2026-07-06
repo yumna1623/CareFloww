@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
+import { useNavigate } from "react-router-dom";
 
 const MyAppointments = () => {
   const [appointments, setAppointments] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAppointments();
@@ -10,9 +12,7 @@ const MyAppointments = () => {
 
   const fetchAppointments = async () => {
     try {
-      const { data } = await api.get(
-        "/appointments/my-appointments"
-      );
+      const { data } = await api.get("/appointments/my-appointments");
 
       setAppointments(data);
     } catch (err) {
@@ -39,37 +39,29 @@ const MyAppointments = () => {
     }
   };
   const handleCancelAppointment = async (appointmentId) => {
-  const confirmCancel = window.confirm(
-    "Are you sure you want to cancel this appointment?"
-  );
-
-  if (!confirmCancel) return;
-
-  try {
-    const { data } = await api.patch(
-      `/appointments/${appointmentId}/cancel`
+    const confirmCancel = window.confirm(
+      "Are you sure you want to cancel this appointment?",
     );
 
-    alert(data.message);
+    if (!confirmCancel) return;
 
-    // Refresh appointment list
-    fetchAppointments();
-  } catch (err) {
-    console.log(err.response?.data);
+    try {
+      const { data } = await api.patch(`/appointments/${appointmentId}/cancel`);
 
-    alert(
-      err.response?.data?.message ||
-        "Unable to cancel appointment."
-    );
-  }
-};
+      alert(data.message);
+
+      // Refresh appointment list
+      fetchAppointments();
+    } catch (err) {
+      console.log(err.response?.data);
+
+      alert(err.response?.data?.message || "Unable to cancel appointment.");
+    }
+  };
 
   return (
     <div className="pt-24 px-10">
-
-      <h1 className="text-3xl font-bold mb-8">
-        My Appointments
-      </h1>
+      <h1 className="text-3xl font-bold mb-8">My Appointments</h1>
 
       {appointments.length === 0 ? (
         <p>No appointments found.</p>
@@ -80,9 +72,7 @@ const MyAppointments = () => {
             className="bg-white border rounded-xl shadow p-6 mb-5"
           >
             <div className="flex justify-between">
-
               <div>
-
                 <h2 className="text-xl font-bold">
                   Dr. {appointment.doctor.name}
                 </h2>
@@ -90,44 +80,44 @@ const MyAppointments = () => {
                 <p className="text-gray-500">
                   {appointment.doctor.specialization}
                 </p>
-
               </div>
 
               <span
                 className={`px-4 py-2 rounded-full text-sm font-semibold ${badgeColor(
-                  appointment.status
+                  appointment.status,
                 )}`}
               >
                 {appointment.status}
               </span>
-
             </div>
 
             <div className="mt-5 space-y-2">
-
               <p>
                 <strong>Date:</strong>{" "}
-                {new Date(
-                  appointment.appointmentDate
-                ).toLocaleDateString()}
+                {new Date(appointment.appointmentDate).toLocaleDateString()}
               </p>
 
               <p>
-                <strong>Time:</strong>{" "}
-                {appointment.slotStartTime} -{" "}
+                <strong>Time:</strong> {appointment.slotStartTime} -{" "}
                 {appointment.slotEndTime}
               </p>
 
               <p>
-                <strong>Queue Position:</strong>{" "}
-                {appointment.queuePosition}
+                <strong>Queue Position:</strong> {appointment.queuePosition}
               </p>
 
               <p>
                 <strong>Estimated Wait:</strong>{" "}
                 {appointment.estimatedWait ?? "--"} min
               </p>
-<div className="mt-5">
+             <div className="mt-5 flex gap-3">
+  <button
+    onClick={() => navigate(`/track/${appointment.id}`)}
+    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+  >
+    Track Appointment
+  </button>
+
   {appointment.status === "pending" && (
     <button
       onClick={() => handleCancelAppointment(appointment.id)}
@@ -141,7 +131,6 @@ const MyAppointments = () => {
           </div>
         ))
       )}
-
     </div>
   );
 };
