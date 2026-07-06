@@ -5,13 +5,18 @@ import { AuthContext } from "../context/AuthContext";
 
 import DoctorStats from "../components/doctor/DoctorStats";
 import DoctorQueue from "../components/doctor/DoctorQueue";
-import ProfileCard from "../components/doctor/ProfileCard";
-import LeaveManagement from "../components/doctor/LeaveManagement";
+import DoctorSidebar from "../components/doctor/DoctorSidebar";
 
 const DoctorDashboard = () => {
   const { user, loading, logout } = useContext(AuthContext);
 
   const navigate = useNavigate();
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   const [stats, setStats] = useState({
     todayAppointments: 0,
@@ -33,25 +38,23 @@ const DoctorDashboard = () => {
     }
 
     if (user?.role === "doctor") {
-      fetchDashboard();
-      fetchQueue();
+      fetchDashboard(selectedDate);
+      fetchQueue(selectedDate);
     }
-  }, [user, loading]);
+  }, [user, loading, selectedDate]);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (date = selectedDate) => {
     try {
-      const { data } = await api.get("/doctors/dashboard");
-
+      const { data } = await api.get(`/doctors/dashboard?date=${date}`);
       setStats(data);
     } catch (err) {
       console.log(err.response?.data);
     }
   };
 
-  const fetchQueue = async () => {
+  const fetchQueue = async (date = selectedDate) => {
     try {
-      const { data } = await api.get("/doctors/queue");
-
+      const { data } = await api.get(`/doctors/queue?date=${date}`);
       setQueue(data);
     } catch (err) {
       console.log(err.response?.data);
@@ -63,64 +66,78 @@ const DoctorDashboard = () => {
     navigate("/login");
   };
 
-  if (loading)
-    return <div className="pt-24 px-10">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-xl font-semibold">
+        Loading Dashboard...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-24 px-8">
+    <div className="min-h-screen bg-slate-100">
 
-      {/* Header */}
+      {/* Sidebar */}
 
-      <div className="bg-white rounded-2xl shadow border p-8 mb-8">
+      <DoctorSidebar
+        open={sidebarOpen}
+        setOpen={setSidebarOpen}
+        user={user}
+        profileImage={profileImage}
+        setProfileImage={setProfileImage}
+        logout={handleLogout}
+      />
 
-        <div className="flex justify-between items-center">
+      <div className="px-6 lg:px-10 py-8">
 
-          <div>
+        {/* Header */}
 
-            <h1 className="text-3xl font-bold">
-              Welcome Dr. {user?.name}
-            </h1>
+        <div className="bg-white rounded-2xl shadow-sm border p-8 mb-8">
 
-            <p className="text-gray-500">
-              {user?.email}
-            </p>
+          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+
+            <div>
+
+              <h1 className="text-4xl font-bold text-gray-800">
+                Welcome back,
+              </h1>
+
+              <h2 className="text-3xl font-bold text-blue-600 mt-1">
+                Dr. {user?.name}
+              </h2>
+
+              <p className="text-gray-500 mt-2">
+                {user?.email}
+              </p>
+
+            </div>
+
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-xl font-semibold shadow"
+            >
+              ☰ Menu
+            </button>
 
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg"
-          >
-            Logout
-          </button>
-
         </div>
 
-      </div>
+        {/* Stats */}
 
-      <DoctorStats stats={stats} />
+        <DoctorStats stats={stats} />
 
-      <div className="grid lg:grid-cols-3 gap-8 mt-8">
+        {/* Queue */}
 
-        <div className="lg:col-span-2">
+        <div className="mt-8">
 
           <DoctorQueue
             queue={queue}
-            refreshQueue={fetchQueue}
-            refreshDashboard={fetchDashboard}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            refreshQueue={() => fetchQueue(selectedDate)}
+            refreshDashboard={() => fetchDashboard(selectedDate)}
           />
-
-        </div>
-
-        <div className="space-y-8">
-
-          <ProfileCard
-            profileImage={profileImage}
-            setProfileImage={setProfileImage}
-            user={user}
-          />
-
-          <LeaveManagement />
 
         </div>
 
