@@ -1,3 +1,4 @@
+// src/pages/DoctorDashboard.jsx
 import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
@@ -5,14 +6,27 @@ import { AuthContext } from "../context/AuthContext";
 
 import DoctorStats from "../components/doctor/DoctorStats";
 import DoctorQueue from "../components/doctor/DoctorQueue";
-import DoctorSidebar from "../components/doctor/DoctorSidebar";
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const formatReadableDate = (dateStr) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
 
 const DoctorDashboard = () => {
-  const { user, loading, logout } = useContext(AuthContext);
-
+  const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
@@ -26,8 +40,6 @@ const DoctorDashboard = () => {
   });
 
   const [queue, setQueue] = useState([]);
-
-  const [profileImage, setProfileImage] = useState(user?.profileImage || "");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -59,58 +71,65 @@ const DoctorDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-xl font-semibold">
-        Loading Dashboard...
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-slate-400 font-medium text-sm">
+            Loading dashboard...
+          </p>
+        </div>
       </div>
     );
   }
 
+  const isToday =
+    selectedDate === new Date().toISOString().split("T")[0];
+
   return (
-    <div className="ml-72 min-h-screen bg-slate-100">
-      {/* Sidebar */}
-      <DoctorSidebar
-        user={user}
-        profileImage={profileImage}
-        logout={handleLogout}
-      />
+    <div >
+      {/* Header */}
+      <div className="relative overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
+        {/* subtle accent */}
+        <div className="absolute top-0 right-0 w-56 h-56 bg-blue-50 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none" />
 
-      <div className="px-6 lg:px-10 py-8">
-        {/* Header */}
-
-        <div className="bg-white rounded-2xl shadow-sm border p-8 mb-8">
-          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
-            <h1 className="text-3xl font-bold">Welcome, Dr. {user?.name}</h1>
-
-            <p className="text-slate-500 mt-2">
-              Here's today's appointments and queue.
+        <div className="relative flex flex-col lg:flex-row justify-between lg:items-center gap-5">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-blue-600 uppercase mb-1">
+              {getGreeting()}
             </p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-slate-800">
+              Dr. {user?.name}
+            </h1>
+            <p className="text-slate-400 mt-1.5 text-sm">
+              Here's an overview of your appointments and queue.
+            </p>
+          </div>
 
-            {/* Inside DoctorDashboard.jsx Header Section */}
+          <div className="flex flex-col items-start lg:items-end gap-1">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              {isToday ? "Today" : "Viewing"}
+            </span>
+            <span className="text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 px-4 py-1.5 rounded-full">
+              {formatReadableDate(selectedDate)}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Stats */}
+      {/* Stats */}
+      <DoctorStats stats={stats} />
 
-        <DoctorStats stats={stats} />
-
-        {/* Queue */}
-
-        <div className="mt-8">
-          <DoctorQueue
-            queue={queue}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-            refreshQueue={() => fetchQueue(selectedDate)}
-            refreshDashboard={() => fetchDashboard(selectedDate)}
-          />
-        </div>
+      {/* Queue */}
+      <div className="mt-8">
+        <DoctorQueue
+          queue={queue}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          refreshQueue={() => fetchQueue(selectedDate)}
+          refreshDashboard={() => fetchDashboard(selectedDate)}
+        />
       </div>
     </div>
   );

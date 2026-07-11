@@ -11,9 +11,9 @@ const Navbar = () => {
   const isDashboard = location.pathname.includes('/dashboard') || location.pathname === '/book-appointment';
 
   return (
-    // 'fixed' with top-4 and mx-4 creates the margin from top and sides
-    <nav className="fixed top-4 left-4 right-4 z-50 flex justify-between items-center px-8 py-4 
-                    bg-white/70 backdrop-blur-xl border border-white/40 shadow-lg rounded-2xl">
+    // top-4 = 2-finger gap from top, left-8/right-8 = 4-finger gap from sides
+    <nav className="fixed top-4 left-84 right-64 z-50 flex justify-between items-center px-8 py-4 
+                    bg-white/30 backdrop-blur-2xl border border-white/50 shadow-lg shadow-black/5 rounded-2xl">
       
       {/* Brand Logo */}
       <Link to="/" className="text-2xl font-black text-blue-900 tracking-tighter">
