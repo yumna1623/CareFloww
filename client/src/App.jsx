@@ -11,12 +11,20 @@ import Signup from "./pages/Signup";
 import PatientDashboard from "./pages/PatientDashboard";
 import MyAppointments from "./pages/MyAppointments";
 import TrackAppointment from "./pages/TrackAppointment";
+import DoctorLayout from "./layout/DoctorLayout";
+import LeaveManagement from "./pages/LeavePage";
+import ProfilePage from "./pages/ProfilePage";
+import UploadPhotoPage from "./pages/UploadPhotoPage";
+
+
+import "./index.css";
+import "./App.css";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Navbar />
+        {/* <Navbar /> */}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -26,6 +34,13 @@ function App() {
           <Route path="/patient/dashboard" element={<PatientDashboard />} />
           <Route path="/my-appointments" element={<MyAppointments />} />
           <Route path="/track/:id" element={<TrackAppointment />} />
+          
+          <Route path="/doctor" element={<DoctorLayout />}>
+            <Route path="dashboard" element={<DoctorDashboard />} />
+            <Route path="leave" element={<LeaveManagement />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="upload-photo" element={<UploadPhotoPage />} />
+          </Route>
         </Routes>
       </Router>
     </AuthProvider>

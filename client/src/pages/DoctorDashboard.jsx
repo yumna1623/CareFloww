@@ -15,7 +15,7 @@ const DoctorDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
 
   const [stats, setStats] = useState({
@@ -27,9 +27,7 @@ const DoctorDashboard = () => {
 
   const [queue, setQueue] = useState([]);
 
-  const [profileImage, setProfileImage] = useState(
-    user?.profileImage || ""
-  );
+  const [profileImage, setProfileImage] = useState(user?.profileImage || "");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -75,52 +73,35 @@ const DoctorDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-
+    <div className="ml-72 min-h-screen bg-slate-100">
       {/* Sidebar */}
-
       <DoctorSidebar
+        user={user}
+        profileImage={profileImage}
+        logout={handleLogout}
+      />
+      {/* <DoctorSidebar
         open={sidebarOpen}
         setOpen={setSidebarOpen}
         user={user}
         profileImage={profileImage}
         setProfileImage={setProfileImage}
         logout={handleLogout}
-      />
+      /> */}
 
       <div className="px-6 lg:px-10 py-8">
-
         {/* Header */}
 
         <div className="bg-white rounded-2xl shadow-sm border p-8 mb-8">
-
           <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+            <h1 className="text-3xl font-bold">Welcome, Dr. {user?.name}</h1>
 
-            <div>
+            <p className="text-slate-500 mt-2">
+              Here's today's appointments and queue.
+            </p>
 
-              <h1 className="text-4xl font-bold text-gray-800">
-                Welcome back,
-              </h1>
-
-              <h2 className="text-3xl font-bold text-blue-600 mt-1">
-                Dr. {user?.name}
-              </h2>
-
-              <p className="text-gray-500 mt-2">
-                {user?.email}
-              </p>
-
-            </div>
-
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-xl font-semibold shadow"
-            >
-              ☰ Menu
-            </button>
-
+            {/* Inside DoctorDashboard.jsx Header Section */}
           </div>
-
         </div>
 
         {/* Stats */}
@@ -130,7 +111,6 @@ const DoctorDashboard = () => {
         {/* Queue */}
 
         <div className="mt-8">
-
           <DoctorQueue
             queue={queue}
             selectedDate={selectedDate}
@@ -138,11 +118,8 @@ const DoctorDashboard = () => {
             refreshQueue={() => fetchQueue(selectedDate)}
             refreshDashboard={() => fetchDashboard(selectedDate)}
           />
-
         </div>
-
       </div>
-
     </div>
   );
 };
