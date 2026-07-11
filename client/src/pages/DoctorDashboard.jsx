@@ -80,14 +80,6 @@ const DoctorDashboard = () => {
         profileImage={profileImage}
         logout={handleLogout}
       />
-      {/* <DoctorSidebar
-        open={sidebarOpen}
-        setOpen={setSidebarOpen}
-        user={user}
-        profileImage={profileImage}
-        setProfileImage={setProfileImage}
-        logout={handleLogout}
-      /> */}
 
       <div className="px-6 lg:px-10 py-8">
         {/* Header */}
