@@ -1,7 +1,7 @@
 import { useState } from "react";
 import api from "../../api/axios";
 
-const LeaveManagement = () => {
+const LeaveManagement = ({ onLeaveAdded }) => {
   const [leaveDate, setLeaveDate] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +22,11 @@ const LeaveManagement = () => {
       alert(data.message);
 
       setLeaveDate("");
+
+      // Tell the parent (LeavePage) to refetch the leave list
+      if (onLeaveAdded) {
+        onLeaveAdded();
+      }
     } catch (err) {
       console.log(err.response?.data);
 

@@ -14,7 +14,6 @@ const DoctorSidebar = ({ user, profileImage, logout, isOpen, setIsOpen }) => {
   const navItems = [
     { to: "/doctor/dashboard", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
     { to: "/doctor/leave", icon: <CalendarDays size={20} />, label: "Leave Management" },
-    { to: "/doctor/profile", icon: <UserCircle size={20} />, label: "Profile" },
     { to: "/doctor/upload-photo", icon: <Camera size={20} />, label: "Upload Photo" },
   ];
 
