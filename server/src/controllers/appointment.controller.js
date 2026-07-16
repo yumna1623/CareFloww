@@ -113,32 +113,33 @@ export const bookAppointment = async (req, res) => {
 
     const queuePosition = previousAppointments + 1;
     // 11. Get patient for email/notification
-    const patient = await prisma.user.findUnique({
-      where: { id: patientId },
-    });
+   const patient = await prisma.user.findUnique({ where: { id: patientId } });
     if (!patient) {
-      return res.status(404).json({
-        message: "Patient not found",
-      });
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    if (!patient?.email) {
+      return res.status(400).json({ message: "Patient email not found" });
     }
 
-    if (!patient?.email) {
-      return res.status(400).json({
-        message: "Patient email not found",
-      });
-    }
-    // 10. Create appointment
+    // 10. Create appointment (queuePosition set temporarily, will be corrected below)
     const appointment = await prisma.appointment.create({
       data: {
         patientId,
         doctorId,
         appointmentDate: selectedDate,
-        queuePosition,
+        queuePosition: 0, // placeholder — recalculated right after
         slotStartTime,
         slotEndTime: selectedSlot.end,
-        // estimatedWait: (queuePosition - 1) * doctor.consultationDuration,
         estimatedWait: null,
       },
+    });
+
+    // 11. Recalculate queue positions for the whole day, ordered by slot time
+    await updateQueue(doctorId, selectedDate);
+
+    // 12. Re-fetch the appointment so the response has the correct queuePosition
+    const finalAppointment = await prisma.appointment.findUnique({
+      where: { id: appointment.id },
     });
 
     await sendEmail({
@@ -148,9 +149,9 @@ export const bookAppointment = async (req, res) => {
 Your appointment has been confirmed.
 
 Doctor: Dr. ${doctor.name}
-Appointment ID: ${appointment.id}
-Date: ${new Date(appointment.appointmentDate).toDateString()}
-Time: ${appointment.slotStartTime} - ${appointment.slotEndTime}
+Appointment ID: ${finalAppointment.id}
+Date: ${new Date(finalAppointment.appointmentDate).toDateString()}
+Time: ${finalAppointment.slotStartTime} - ${finalAppointment.slotEndTime}
 
 Please arrive 10 minutes early.
 
@@ -158,25 +159,23 @@ Thank you.
 `,
     });
 
-    // 12. Notifications (Socket)
     sendNotification(doctorId, "new_appointment", {
       message: "New appointment booked",
-      appointment,
+      appointment: finalAppointment,
     });
 
     sendNotification(patientId, "appointment_confirmed", {
       message: "Your appointment is confirmed",
-      appointment,
+      appointment: finalAppointment,
     });
 
     return res.status(201).json({
       message: "Appointment booked successfully",
-      appointment,
+      appointmentId: finalAppointment.id, // ← for tracking, as you asked
+      appointment: finalAppointment,
     });
   } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ message: error.message });
   }
 };
 export const trackAppointment = async (req, res) => {

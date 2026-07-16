@@ -310,7 +310,25 @@ export const addLeaveDate = async (req, res) => {
     });
   }
 };
+// In your backend controller file
+export const getDoctorLeaves = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
 
+    const leaves = await prisma.doctorLeave.findMany({
+      where: {
+        doctorId: doctorId,
+      },
+      orderBy: {
+        leaveDate: 'asc', // Sort by date
+      },
+    });
+
+    res.status(200).json(leaves);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 export const uploadProfileImage = async (req, res) => {
   try {
     if (!req.file) {

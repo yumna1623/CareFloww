@@ -9,6 +9,7 @@ import {
   getDoctorDashboard,
   addLeaveDate,
   uploadProfileImage,
+  getDoctorLeaves,
 } from "../controllers/doctor.controller.js";
 import upload from "../middlewares/upload.middleware.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
@@ -28,6 +29,7 @@ router.get("/:id/slots/:date", getAvailableSlots);
 router.get("/:id", getDoctorById);
 
 router.post("/leave", authMiddleware, doctorOnly, addLeaveDate);
+router.get("/leave", authMiddleware, doctorOnly, getDoctorLeaves);
 
 router.post("/profile/upload",authMiddleware,doctorOnly,upload.single("image"),uploadProfileImage,);
 
