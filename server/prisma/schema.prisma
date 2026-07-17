@@ -62,6 +62,10 @@ model Appointment {
   patientId     String
   doctorId      String
 
+
+  patientName String
+  age Int
+
   appointmentDate DateTime
 
   reminderSent Boolean @default(false)

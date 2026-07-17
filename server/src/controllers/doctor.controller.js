@@ -175,10 +175,6 @@ export const getAvailableSlots = async (req, res) => {
   try {
     const { id, date } = req.params;
 
-    console.log("=================================");
-    console.log("getAvailableSlots called");
-    console.log("Doctor ID:", id);
-    console.log("Date:", date);
 
     const doctor = await prisma.doctor.findUnique({
       where: { id },

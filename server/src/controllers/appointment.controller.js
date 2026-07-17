@@ -8,7 +8,8 @@ import { updateQueue } from "../utils/updateQueue.js";
 
 export const bookAppointment = async (req, res) => {
   try {
-    const { doctorId, slotStartTime, appointmentDate } = req.body;
+    const { doctorId, slotStartTime, appointmentDate, patientName, age } =
+      req.body;
     const patientId = req.user.id;
 
     // 1. Get doctor
@@ -113,7 +114,7 @@ export const bookAppointment = async (req, res) => {
 
     const queuePosition = previousAppointments + 1;
     // 11. Get patient for email/notification
-   const patient = await prisma.user.findUnique({ where: { id: patientId } });
+    const patient = await prisma.user.findUnique({ where: { id: patientId } });
     if (!patient) {
       return res.status(404).json({ message: "Patient not found" });
     }
@@ -122,17 +123,18 @@ export const bookAppointment = async (req, res) => {
     }
 
     // 10. Create appointment (queuePosition set temporarily, will be corrected below)
-    const appointment = await prisma.appointment.create({
-      data: {
-        patientId,
-        doctorId,
-        appointmentDate: selectedDate,
-        queuePosition: 0, // placeholder — recalculated right after
-        slotStartTime,
-        slotEndTime: selectedSlot.end,
-        estimatedWait: null,
-      },
-    });
+ const appointment = await prisma.appointment.create({
+  data: {
+    patientId,
+    doctorId,
+    patientName,
+    age,
+    appointmentDate: selectedDate,
+    queuePosition: 0,
+    slotStartTime,
+    slotEndTime: selectedSlot.end,
+  },
+});
 
     // 11. Recalculate queue positions for the whole day, ordered by slot time
     await updateQueue(doctorId, selectedDate);
@@ -208,9 +210,7 @@ export const trackAppointment = async (req, res) => {
     // Appointment date + slot time
     const appointmentTime = new Date(appointment.appointmentDate);
 
-    const [hour, minute] = appointment.slotStartTime
-      .split(":")
-      .map(Number);
+    const [hour, minute] = appointment.slotStartTime.split(":").map(Number);
 
     appointmentTime.setHours(hour, minute, 0, 0);
 
@@ -228,9 +228,7 @@ export const trackAppointment = async (req, res) => {
       const totalMinutes = Math.floor(diff / 60000);
 
       const days = Math.floor(totalMinutes / (60 * 24));
-      const hours = Math.floor(
-        (totalMinutes % (60 * 24)) / 60
-      );
+      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
       const minutes = totalMinutes % 60;
 
       countdown = {
@@ -251,13 +249,9 @@ export const trackAppointment = async (req, res) => {
         },
       });
 
-      peopleAhead = Math.max(
-        appointment.queuePosition - currentQueue - 1,
-        0
-      );
+      peopleAhead = Math.max(appointment.queuePosition - currentQueue - 1, 0);
 
-      estimatedWait =
-        peopleAhead * doctor.consultationDuration;
+      estimatedWait = peopleAhead * doctor.consultationDuration;
     }
 
     res.json({
@@ -322,78 +316,68 @@ export const getPatientAppointments = async (req, res) => {
 };
 
 export const getDoctorQueue = async (req, res) => {
-    try {
+  try {
+    const doctorId = req.user.id;
 
-        const doctorId = req.user.id;
+    const date = req.query.date;
 
-        const date = req.query.date;
+    let startDate;
+    let endDate;
 
-        let startDate;
-        let endDate;
+    if (date) {
+      startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
 
-        if (date) {
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+    } else {
+      startDate = new Date();
+      startDate.setHours(0, 0, 0, 0);
 
-            startDate = new Date(date);
-            startDate.setHours(0,0,0,0);
-
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate()+1);
-
-        } else {
-
-            startDate = new Date();
-            startDate.setHours(0,0,0,0);
-
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate()+1);
-
-        }
-
-        const appointments = await prisma.appointment.findMany({
-
-            where:{
-                doctorId,
-
-                appointmentDate:{
-                    gte:startDate,
-                    lt:endDate
-                },
-
-                status:{
-                    in:["pending","in-progress"]
-                }
-            },
-
-            include:{
-                patient:{
-                    select:{
-                        id:true,
-                        name:true,
-                        email:true
-                    }
-                }
-            },
-
-            orderBy:[
-                {
-                    appointmentDate:"asc"
-                },
-                {
-                    slotStartTime:"asc"
-                }
-            ]
-
-        });
-
-        res.json(appointments);
-
-    } catch(error){
-
-        res.status(500).json({
-            message:error.message
-        });
-
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
     }
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        doctorId,
+
+        appointmentDate: {
+          gte: startDate,
+          lt: endDate,
+        },
+
+        status: {
+          in: ["pending", "in-progress"],
+        },
+      },
+
+      include: {
+        patient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+
+      orderBy: [
+        {
+          appointmentDate: "asc",
+        },
+        {
+          slotStartTime: "asc",
+        },
+      ],
+    });
+
+    res.json(appointments);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
 export const cancelAppointment = async (req, res) => {
@@ -470,40 +454,32 @@ export const startConsultation = async (req, res) => {
     // Appointment date + slot time
     const appointmentStart = new Date(appointment.appointmentDate);
 
-    const [hour, minute] = appointment.slotStartTime
-      .split(":")
-      .map(Number);
+    const [hour, minute] = appointment.slotStartTime.split(":").map(Number);
 
     appointmentStart.setHours(hour, minute, 0, 0);
 
     if (new Date() < appointmentStart) {
       return res.status(400).json({
-        message:
-          "Consultation cannot start before the appointment time.",
+        message: "Consultation cannot start before the appointment time.",
       });
     }
 
-    const updatedAppointment =
-      await prisma.appointment.update({
-        where: {
-          id,
-        },
-        data: {
-          status: "in-progress",
-        },
-      });
+    const updatedAppointment = await prisma.appointment.update({
+      where: {
+        id,
+      },
+      data: {
+        status: "in-progress",
+      },
+    });
 
     getIO().emit("queueUpdated", {
       doctorId: updatedAppointment.doctorId,
     });
 
-    sendNotification(
-      updatedAppointment.patientId,
-      "consultation_started",
-      {
-        message: "Your consultation has started",
-      }
-    );
+    sendNotification(updatedAppointment.patientId, "consultation_started", {
+      message: "Your consultation has started",
+    });
 
     res.json({
       message: "Consultation started",
@@ -538,32 +514,27 @@ export const completeConsultation = async (req, res) => {
       });
     }
 
-    const updatedAppointment =
-      await prisma.appointment.update({
-        where: {
-          id,
-        },
-        data: {
-          status: "done",
-        },
-      });
+    const updatedAppointment = await prisma.appointment.update({
+      where: {
+        id,
+      },
+      data: {
+        status: "done",
+      },
+    });
 
     await updateQueue(
       updatedAppointment.doctorId,
-      updatedAppointment.appointmentDate
+      updatedAppointment.appointmentDate,
     );
 
     getIO().emit("queueUpdated", {
       doctorId: updatedAppointment.doctorId,
     });
 
-    sendNotification(
-      updatedAppointment.patientId,
-      "consultation_completed",
-      {
-        message: "Consultation completed",
-      }
-    );
+    sendNotification(updatedAppointment.patientId, "consultation_completed", {
+      message: "Consultation completed",
+    });
 
     res.json({
       message: "Consultation completed",
