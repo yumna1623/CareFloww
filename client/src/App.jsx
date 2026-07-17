@@ -11,6 +11,7 @@ import PatientDashboard from "./pages/PatientDashboard";
 import MyAppointments from "./pages/MyAppointments";
 import TrackAppointment from "./pages/TrackAppointment";
 import DoctorLayout from "./layout/DoctorLayout";
+import PatientLayout from "./layout/PatientLayout";
 import LeavePage from "./pages/LeavePage";
 import ProfilePage from "./pages/ProfilePage";
 import UploadPhotoPage from "./pages/UploadPhotoPage";
@@ -27,12 +28,15 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/book-appointment" element={<BookAppointment />} />
-          <Route path="/patient/dashboard" element={<PatientDashboard />} />
-          <Route path="/my-appointments" element={<MyAppointments />} />
+
+          <Route element={<PatientLayout />}>
+            <Route path="/patient/dashboard" element={<PatientDashboard />} />
+            <Route path="/book-appointment" element={<BookAppointment />} />
+            <Route path="/my-appointments" element={<MyAppointments />} />
+          </Route>
+
           <Route path="/track/:id" element={<TrackAppointment />} />
 
-          {/* All doctor routes now live inside DoctorLayout, so the sidebar always shows */}
           <Route path="/doctor" element={<DoctorLayout />}>
             <Route path="dashboard" element={<DoctorDashboard />} />
             <Route path="leave" element={<LeavePage />} />

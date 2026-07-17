@@ -2,10 +2,9 @@ import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
-
 import DashboardCards from "../components/patient/DashboardCards";
-import AppointmentHistory from "../components/patient/AppointmentHistory";
 import UpcomingAppointments from "../components/patient/UpcomingAppointments";
+// import AppointmentHistory from "../components/patient/AppointmentHistory";
 
 const PatientDashboard = () => {
   const { user, loading, logout } = useContext(AuthContext);
@@ -89,31 +88,6 @@ const PatientDashboard = () => {
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3">
-
-            <button
-              onClick={() => navigate("/book-appointment")}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-            >
-              Book Appointment
-            </button>
-
-            <button
-              onClick={() => navigate("/my-appointments")}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition"
-            >
-              My Appointments
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition"
-            >
-              Logout
-            </button>
-
-          </div>
 
         </div>
 
@@ -133,13 +107,6 @@ const PatientDashboard = () => {
             appointments={appointments}
           />
         )}
-      </div>
-
-      {/* Appointment History */}
-      <div className="mt-8">
-        <AppointmentHistory
-          appointments={appointments}
-        />
       </div>
 
     </div>
