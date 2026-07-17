@@ -24,8 +24,8 @@ router.get("/profile/me", authMiddleware, doctorOnly, getMyProfile);
 router.patch("/profile", authMiddleware, doctorOnly, updateProfile);
 
 router.get("/queue", authMiddleware, doctorOnly, getDoctorQueue);
-router.get("/:id/slots", getAvailableSlots);
 router.get("/:id/slots/:date", getAvailableSlots);
+router.get("/:id/slots", getAvailableSlots);
 router.get("/:id", getDoctorById);
 
 router.post("/leave", authMiddleware, doctorOnly, addLeaveDate);

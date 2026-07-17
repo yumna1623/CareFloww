@@ -445,39 +445,69 @@ export const cancelAppointment = async (req, res) => {
 };
 
 export const startConsultation = async (req, res) => {
-  const appointmentStart = new Date(appointment.appointmentDate);
-
-  const [hour, minute] = appointment.slotStartTime.split(":").map(Number);
-
-  appointmentStart.setHours(hour, minute, 0, 0);
-
-  if (new Date() < appointmentStart) {
-    return res.status(400).json({
-      message: "Consultation cannot start before the appointment time.",
-    });
-  }
   try {
     const { id } = req.params;
 
-    const appointment = await prisma.appointment.update({
+    // Find appointment first
+    const appointment = await prisma.appointment.findUnique({
       where: {
         id,
       },
+    });
 
-      data: {
-        status: "in-progress",
-      },
-    });
+    if (!appointment) {
+      return res.status(404).json({
+        message: "Appointment not found",
+      });
+    }
+
+    if (appointment.status !== "pending") {
+      return res.status(400).json({
+        message: `Appointment is already ${appointment.status}`,
+      });
+    }
+
+    // Appointment date + slot time
+    const appointmentStart = new Date(appointment.appointmentDate);
+
+    const [hour, minute] = appointment.slotStartTime
+      .split(":")
+      .map(Number);
+
+    appointmentStart.setHours(hour, minute, 0, 0);
+
+    if (new Date() < appointmentStart) {
+      return res.status(400).json({
+        message:
+          "Consultation cannot start before the appointment time.",
+      });
+    }
+
+    const updatedAppointment =
+      await prisma.appointment.update({
+        where: {
+          id,
+        },
+        data: {
+          status: "in-progress",
+        },
+      });
+
     getIO().emit("queueUpdated", {
-      doctorId: appointment.doctorId,
+      doctorId: updatedAppointment.doctorId,
     });
+
+    sendNotification(
+      updatedAppointment.patientId,
+      "consultation_started",
+      {
+        message: "Your consultation has started",
+      }
+    );
 
     res.json({
       message: "Consultation started",
-      appointment,
-    });
-    sendNotification(appointment.patientId, "consultation_started", {
-      message: "Your consultation has started",
+      appointment: updatedAppointment,
     });
   } catch (error) {
     res.status(500).json({
@@ -489,32 +519,55 @@ export const completeConsultation = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const appointment = await prisma.appointment.update({
+    // Find appointment first
+    const appointment = await prisma.appointment.findUnique({
       where: {
         id,
       },
+    });
 
-      data: {
-        status: "done",
-      },
-    });
-    await updateQueue(appointment.doctorId, appointment.appointmentDate);
-    getIO().emit("queueUpdated", {
-      doctorId: appointment.doctorId,
-    });
-    if (appointment.status !== "in-progress") {
-      return res.status(400).json({
-        message: "Consultation not started",
+    if (!appointment) {
+      return res.status(404).json({
+        message: "Appointment not found",
       });
     }
 
-    sendNotification(appointment.patientId, "consultation_completed", {
-      message: "Consultation completed",
+    if (appointment.status !== "in-progress") {
+      return res.status(400).json({
+        message: "Consultation has not started",
+      });
+    }
+
+    const updatedAppointment =
+      await prisma.appointment.update({
+        where: {
+          id,
+        },
+        data: {
+          status: "done",
+        },
+      });
+
+    await updateQueue(
+      updatedAppointment.doctorId,
+      updatedAppointment.appointmentDate
+    );
+
+    getIO().emit("queueUpdated", {
+      doctorId: updatedAppointment.doctorId,
     });
+
+    sendNotification(
+      updatedAppointment.patientId,
+      "consultation_completed",
+      {
+        message: "Consultation completed",
+      }
+    );
 
     res.json({
       message: "Consultation completed",
-      appointment,
+      appointment: updatedAppointment,
     });
   } catch (error) {
     res.status(500).json({

@@ -174,48 +174,66 @@ export const markMissed = async (req, res) => {
 export const getAvailableSlots = async (req, res) => {
   try {
     const { id, date } = req.params;
+
+    console.log("=================================");
+    console.log("getAvailableSlots called");
+    console.log("Doctor ID:", id);
+    console.log("Date:", date);
+
     const doctor = await prisma.doctor.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!doctor) {
+      console.log("Doctor not found");
       return res.status(404).json({
         message: "Doctor not found",
       });
     }
 
+    console.log("Doctor Found:");
+    console.log(doctor);
+
+    console.log("Start Time:", doctor.availableStartTime);
+    console.log("End Time:", doctor.availableEndTime);
+    console.log("Duration:", doctor.consultationDuration);
+
     const allSlots = generateSlots(
       doctor.availableStartTime,
       doctor.availableEndTime,
-      doctor.consultationDuration,
+      doctor.consultationDuration
     );
 
-   const bookedAppointments = await prisma.appointment.findMany({
-  where: {
-    doctorId: id,
-    appointmentDate: new Date(date),
-    status: {
-      not: "cancelled",
-    },
-  },
-});
+    console.log("Generated Slots:", allSlots);
+    console.log("Total Slots:", allSlots.length);
 
-    const availableSlots = allSlots.map((slot) => {
-      const booked = bookedAppointments.some(
-        (app) => app.slotStartTime === slot.start,
-      );
-
-      return {
-        ...slot,
-        available: !booked,
-      };
+    const bookedAppointments = await prisma.appointment.findMany({
+      where: {
+        doctorId: id,
+        appointmentDate: new Date(date),
+        status: {
+          not: "cancelled",
+        },
+      },
     });
 
-    res.json(availableSlots);
+    console.log("Booked Appointments:", bookedAppointments);
+
+    const availableSlots = allSlots.map((slot) => ({
+      ...slot,
+      available: !bookedAppointments.some(
+        (app) => app.slotStartTime === slot.start
+      ),
+    }));
+
+    console.log("Available Slots:", availableSlots);
+    console.log("=================================");
+
+    return res.json(availableSlots);
   } catch (error) {
-    res.status(500).json({
+    console.log(error);
+
+    return res.status(500).json({
       message: error.message,
     });
   }
@@ -320,7 +338,7 @@ export const getDoctorLeaves = async (req, res) => {
         doctorId: doctorId,
       },
       orderBy: {
-        leaveDate: 'asc', // Sort by date
+        leaveDate: "asc", // Sort by date
       },
     });
 
