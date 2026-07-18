@@ -10,6 +10,7 @@ export const bookAppointment = async (req, res) => {
   try {
     const { doctorId, slotStartTime, appointmentDate, patientName, age } =
       req.body;
+
     const patientId = req.user.id;
 
     // 1. Get doctor
@@ -18,7 +19,9 @@ export const bookAppointment = async (req, res) => {
     });
 
     if (!doctor) {
-      return res.status(404).json({ message: "Doctor not found" });
+      return res.status(404).json({
+        message: "Doctor not found",
+      });
     }
 
     // 2. Normalize dates
@@ -30,20 +33,27 @@ export const bookAppointment = async (req, res) => {
 
     // 3. Past date check
     if (selectedDate < today) {
-      return res.status(400).json({ message: "Cannot book past dates" });
+      return res.status(400).json({
+        message: "Cannot book past dates",
+      });
     }
 
     // 4. 7-day limit
     const maxDate = new Date();
+    maxDate.setHours(0, 0, 0, 0);
     maxDate.setDate(maxDate.getDate() + 7);
 
     if (selectedDate > maxDate) {
-      return res.status(400).json({ message: "Can only book within 7 days" });
+      return res.status(400).json({
+        message: "Can only book within 7 days",
+      });
     }
 
-    // 5. Doctor leave check (better match)
+    // 5. Doctor leave check
     const leaves = await prisma.doctorLeave.findMany({
-      where: { doctorId },
+      where: {
+        doctorId,
+      },
     });
 
     const isOnLeave = leaves.some(
@@ -68,16 +78,19 @@ export const bookAppointment = async (req, res) => {
     const selectedSlot = allSlots.find((slot) => slot.start === slotStartTime);
 
     if (!selectedSlot) {
-      return res.status(400).json({ message: "Invalid slot" });
+      return res.status(400).json({
+        message: "Invalid slot",
+      });
     }
 
-    // 7. Past time validation (same day)
+    // 7. Same-day past time validation
     const now = new Date();
 
     if (selectedDate.toDateString() === now.toDateString()) {
       const [hour, minute] = slotStartTime.split(":").map(Number);
 
       const slotDate = new Date();
+
       slotDate.setHours(hour, minute, 0, 0);
 
       if (slotDate < now) {
@@ -87,63 +100,69 @@ export const bookAppointment = async (req, res) => {
       }
     }
 
-    // 8. Check existing appointment
+    // 8. Check if slot is already booked
     const existingAppointment = await prisma.appointment.findFirst({
       where: {
         doctorId,
         appointmentDate: selectedDate,
         slotStartTime,
-        status: { not: "cancelled" },
-      },
-    });
-
-    if (existingAppointment) {
-      return res.status(400).json({ message: "Slot already booked" });
-    }
-
-    // 9. Queue position
-    const previousAppointments = await prisma.appointment.count({
-      where: {
-        doctorId,
-        appointmentDate: selectedDate,
         status: {
           not: "cancelled",
         },
       },
     });
 
-    const queuePosition = previousAppointments + 1;
-    // 11. Get patient for email/notification
-    const patient = await prisma.user.findUnique({ where: { id: patientId } });
-    if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
-    }
-    if (!patient?.email) {
-      return res.status(400).json({ message: "Patient email not found" });
+    if (existingAppointment) {
+      return res.status(400).json({
+        message: "Slot already booked",
+      });
     }
 
-    // 10. Create appointment (queuePosition set temporarily, will be corrected below)
- const appointment = await prisma.appointment.create({
-  data: {
-    patientId,
-    doctorId,
-    patientName,
-    age,
-    appointmentDate: selectedDate,
-    queuePosition: 0,
-    slotStartTime,
-    slotEndTime: selectedSlot.end,
-  },
-});
-
-    // 11. Recalculate queue positions for the whole day, ordered by slot time
-    await updateQueue(doctorId, selectedDate);
-
-    // 12. Re-fetch the appointment so the response has the correct queuePosition
-    const finalAppointment = await prisma.appointment.findUnique({
-      where: { id: appointment.id },
+    // 9. Get patient
+    const patient = await prisma.user.findUnique({
+      where: {
+        id: patientId,
+      },
     });
 
+    if (!patient) {
+      return res.status(404).json({
+        message: "Patient not found",
+      });
+    }
+
+    if (!patient.email) {
+      return res.status(400).json({
+        message: "Patient email not found",
+      });
+    }
+
+    // 10. Create appointment
+    const appointment = await prisma.appointment.create({
+      data: {
+        patientId,
+        doctorId,
+        patientName,
+        age,
+        appointmentDate: selectedDate,
+        queuePosition: 0,
+        estimatedWait: 0,
+        slotStartTime,
+        slotEndTime: selectedSlot.end,
+      },
+    });
+
+    // 11. Recalculate queue position and estimated wait
+    await updateQueue(doctorId, selectedDate);
+
+    // 12. Get updated appointment
+    const finalAppointment = await prisma.appointment.findUnique({
+      where: {
+        id: appointment.id,
+      },
+    });
+
+    // 13. Send email
     await sendEmail({
       to: patient.email,
       subject: "Appointment Confirmed",
@@ -155,12 +174,15 @@ Appointment ID: ${finalAppointment.id}
 Date: ${new Date(finalAppointment.appointmentDate).toDateString()}
 Time: ${finalAppointment.slotStartTime} - ${finalAppointment.slotEndTime}
 
+Estimated Wait: ${finalAppointment.estimatedWait} minutes
+
 Please arrive 10 minutes early.
 
 Thank you.
 `,
     });
 
+    // 14. Notifications
     sendNotification(doctorId, "new_appointment", {
       message: "New appointment booked",
       appointment: finalAppointment,
@@ -173,11 +195,15 @@ Thank you.
 
     return res.status(201).json({
       message: "Appointment booked successfully",
-      appointmentId: finalAppointment.id, // ← for tracking, as you asked
+      appointmentId: finalAppointment.id,
       appointment: finalAppointment,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    console.error("Booking error:", error);
+
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
 export const trackAppointment = async (req, res) => {
@@ -344,18 +370,31 @@ export const getDoctorQueue = async (req, res) => {
     const now = new Date();
     const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes grace period
 
+    let queueChanged = false;
+
     for (const appointment of pendingAppointments) {
       const endTime = new Date(appointment.appointmentDate);
+
       const [hour, minute] = appointment.slotEndTime.split(":").map(Number);
+
       endTime.setHours(hour, minute, 0, 0);
 
-      // Only mark as missed if the current time is past (EndTime + 15 mins)
-      if (now.getTime() > (endTime.getTime() + GRACE_PERIOD_MS)) {
+      if (now.getTime() > endTime.getTime() + GRACE_PERIOD_MS) {
         await prisma.appointment.update({
-          where: { id: appointment.id },
-          data: { status: "missed" },
+          where: {
+            id: appointment.id,
+          },
+          data: {
+            status: "missed",
+          },
         });
+
+        queueChanged = true;
       }
+    }
+
+    if (queueChanged) {
+      await updateQueue(doctorId, startDate);
     }
 
     const appointments = await prisma.appointment.findMany({
