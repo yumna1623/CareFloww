@@ -44,8 +44,5 @@ router.get(
 router.patch("/prescription/:id", authMiddleware, doctorOnly, addPrescription);
 router.get("/my-appointments", authMiddleware, getPatientAppointments);
 router.patch("/:appointmentId/cancel", authMiddleware, cancelAppointment);
-router.get(
-  "/track/:id",
-  authMiddleware, patientOnly,trackAppointment,
-);
+router.get("/track/:id", authMiddleware, patientOnly, trackAppointment);
 export default router;

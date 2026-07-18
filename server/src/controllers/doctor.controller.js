@@ -215,12 +215,27 @@ export const getAvailableSlots = async (req, res) => {
 
     console.log("Booked Appointments:", bookedAppointments);
 
-    const availableSlots = allSlots.map((slot) => ({
-      ...slot,
-      available: !bookedAppointments.some(
-        (app) => app.slotStartTime === slot.start
-      ),
-    }));
+   const now = new Date();
+
+const availableSlots = allSlots.map((slot) => {
+  const [hour, minute] = slot.start.split(":").map(Number);
+
+  const slotDateTime = new Date(date);
+  slotDateTime.setHours(hour, minute, 0, 0);
+
+  const booked = bookedAppointments.some(
+    (app) => app.slotStartTime === slot.start
+  );
+
+  const isPast = slotDateTime < now;
+
+  return {
+    ...slot,
+    booked,
+    isPast,
+    available: !booked && !isPast,
+  };
+});
 
     console.log("Available Slots:", availableSlots);
     console.log("=================================");

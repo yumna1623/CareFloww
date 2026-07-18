@@ -318,65 +318,61 @@ export const getPatientAppointments = async (req, res) => {
 export const getDoctorQueue = async (req, res) => {
   try {
     const doctorId = req.user.id;
-
     const date = req.query.date;
 
-    let startDate;
-    let endDate;
-
+    let startDate, endDate;
     if (date) {
       startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
-
       endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 1);
     } else {
       startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
-
       endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 1);
+    }
+
+    const pendingAppointments = await prisma.appointment.findMany({
+      where: {
+        doctorId,
+        appointmentDate: { gte: startDate, lt: endDate },
+        status: "pending",
+      },
+    });
+
+    const now = new Date();
+    const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes grace period
+
+    for (const appointment of pendingAppointments) {
+      const endTime = new Date(appointment.appointmentDate);
+      const [hour, minute] = appointment.slotEndTime.split(":").map(Number);
+      endTime.setHours(hour, minute, 0, 0);
+
+      // Only mark as missed if the current time is past (EndTime + 15 mins)
+      if (now.getTime() > (endTime.getTime() + GRACE_PERIOD_MS)) {
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: { status: "missed" },
+        });
+      }
     }
 
     const appointments = await prisma.appointment.findMany({
       where: {
         doctorId,
-
-        appointmentDate: {
-          gte: startDate,
-          lt: endDate,
-        },
-
-        status: {
-          in: ["pending", "in-progress"],
-        },
+        appointmentDate: { gte: startDate, lt: endDate },
+        status: { in: ["pending", "in-progress"] },
       },
-
       include: {
-        patient: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        patient: { select: { id: true, name: true, email: true } },
       },
-
-      orderBy: [
-        {
-          appointmentDate: "asc",
-        },
-        {
-          slotStartTime: "asc",
-        },
-      ],
+      orderBy: { slotStartTime: "asc" },
     });
 
     res.json(appointments);
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
