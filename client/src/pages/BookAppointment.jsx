@@ -35,9 +35,7 @@ const BookAppointment = () => {
     if (!doctorId || !date) return;
 
     try {
-      const { data } = await api.get(
-        `/doctors/${doctorId}/slots/${date}`
-      );
+      const { data } = await api.get(`/doctors/${doctorId}/slots/${date}`);
 
       console.log("Slots:", data);
 
@@ -66,7 +64,6 @@ const BookAppointment = () => {
       fetchSlots(doctorId, formData.appointmentDate);
     }
   };
-  
 
   // Date Changed
   const handleDateChange = (e) => {
@@ -84,30 +81,30 @@ const BookAppointment = () => {
   };
 
   // Booking
- const handleBooking = async (e) => {
-  e.preventDefault();
+  const handleBooking = async (e) => {
+    e.preventDefault();
 
-  try {
-    const { data } = await api.post("/appointments/book", {
-  doctorId: formData.doctorId,
-  appointmentDate: formData.appointmentDate,
-  slotStartTime: formData.slot,
-});
+    try {
+      const { data } = await api.post("/appointments/book", {
+        doctorId: formData.doctorId,
+        appointmentDate: formData.appointmentDate,
+        slotStartTime: formData.slot,
+        patientName: formData.patientName,
+        age: Number(formData.age),
+      });
 
-alert("Appointment booked successfully!");
+      alert("Appointment booked successfully!");
 
-navigate(`/track/${data.appointment.id}`);
-  } catch (err) {
-    console.log(err.response?.data);
-    alert(err.response?.data?.message || "Booking failed");
-  }
-};
+      navigate(`/track/${data.appointment.id}`);
+    } catch (err) {
+      console.log(err.response?.data);
+      alert(err.response?.data?.message || "Booking failed");
+    }
+  };
 
   return (
     <div className="pt-24 px-10 max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">
-        Book an Appointment
-      </h1>
+      <h1 className="text-3xl font-bold mb-6">Book an Appointment</h1>
 
       <form
         onSubmit={handleBooking}
@@ -175,36 +172,50 @@ navigate(`/track/${data.appointment.id}`);
         />
 
         {/* Slots */}
-        {selectedDoc && (
-          <select
-            className="w-full border rounded p-3"
-            value={formData.slot}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                slot: e.target.value,
-              }))
-            }
-            required
-          >
-            <option value="">Select Slot</option>
+       {/* Slots */}
+{selectedDoc && (
+  <select
+    className="w-full border rounded p-3"
+    value={formData.slot}
+    onChange={(e) =>
+      setFormData((prev) => ({
+        ...prev,
+        slot: e.target.value,
+      }))
+    }
+    required
+  >
+    <option value="">Select Slot</option>
 
-            {slots.length > 0 ? (
-              slots.map((slot, index) => (
-                <option
-                  key={index}
-                  value={slot.start}
-                  disabled={!slot.available}
-                >
-                  {slot.start} - {slot.end}
-                  {!slot.available ? " (Booked)" : ""}
-                </option>
-              ))
-            ) : (
-              <option disabled>No Slots Available</option>
-            )}
-          </select>
-        )}
+    {slots.length > 0 ? (
+      slots.map((slot, index) => (
+       <option
+  key={index}
+  value={slot.start}
+  disabled={!slot.available}
+  className={
+    slot.isPast
+      ? "bg-gray-200 text-gray-500"
+      : slot.booked
+      ? "bg-red-100 text-red-700"
+      : "bg-green-100 text-green-700"
+  }
+>
+  {slot.start} - {slot.end}
+
+  {slot.isPast
+    ? " (Passed)"
+    : slot.booked
+    ? " (Booked)"
+    : " (Available)"}
+</option>
+          
+      ))
+    ) : (
+      <option disabled>No Slots Available</option>
+    )}
+  </select>
+)}
 
         <button
           type="submit"

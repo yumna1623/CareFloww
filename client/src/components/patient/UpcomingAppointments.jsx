@@ -1,14 +1,12 @@
 const UpcomingAppointments = ({ appointments }) => {
   const upcomingAppointments = appointments.filter(
-    (appointment) => appointment.status === "pending"
+    (appointment) => appointment.status === "pending",
   );
 
   if (upcomingAppointments.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow border p-6">
-        <h2 className="text-2xl font-bold mb-4">
-          Upcoming Appointments
-        </h2>
+        <h2 className="text-2xl font-bold mb-4">Upcoming Appointments</h2>
 
         <p className="text-gray-500">
           You don't have any upcoming appointments.
@@ -19,9 +17,7 @@ const UpcomingAppointments = ({ appointments }) => {
 
   return (
     <div className="bg-white rounded-xl shadow border p-6">
-      <h2 className="text-2xl font-bold mb-6">
-        Upcoming Appointments
-      </h2>
+      <h2 className="text-2xl font-bold mb-6">Upcoming Appointments</h2>
 
       <div className="space-y-5">
         {upcomingAppointments.map((appointment) => (
@@ -41,15 +37,15 @@ const UpcomingAppointments = ({ appointments }) => {
 
                 <div className="mt-4 space-y-2">
                   <p>
+                    <strong>Patient:</strong> {appointment.patientName}
+                  </p>
+                  <p>
                     <strong>Date:</strong>{" "}
-                    {new Date(
-                      appointment.appointmentDate
-                    ).toLocaleDateString()}
+                    {new Date(appointment.appointmentDate).toLocaleDateString()}
                   </p>
 
                   <p>
-                    <strong>Time:</strong>{" "}
-                    {appointment.slotStartTime} -{" "}
+                    <strong>Time:</strong> {appointment.slotStartTime} -{" "}
                     {appointment.slotEndTime}
                   </p>
 

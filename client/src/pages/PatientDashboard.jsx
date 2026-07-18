@@ -70,7 +70,7 @@ const PatientDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-24 px-8">
+    <div className="min-h-screen bg-gray-100 ">
 
       {/* Header */}
       <div className="bg-white rounded-2xl shadow border p-8 mb-8">

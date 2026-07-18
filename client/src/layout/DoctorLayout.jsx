@@ -2,7 +2,7 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { useContext, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
-import DoctorSidebar from "../components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -17,7 +17,7 @@ const DoctorLayout = () => {
 const doctorNavItems = [
   {
     to: "/doctor/dashboard",
-    icon: <Lay outDashboard size={20} />,
+    icon: <LayoutDashboard outDashboard size={20} />,
     label: "Dashboard",
   },
   {
